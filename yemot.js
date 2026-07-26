@@ -8,7 +8,7 @@ export async function handleYemot(request, env) {
     const studentCode = url.searchParams.get('student_code');
     const arrivalInput = url.searchParams.get('arrival_input');
 
-    // שלב 1: בקשת קוד תלמיד (ללא נקודות, בדיוק בתבנית שביקשת)
+    // שלב 1: בקשת קוד תלמיד
     if (!studentCode) {
         return new Response("read=t-אנא הקש את קוד התלמיד ולסיום סולמית=student_code,,,,,NO,,,,,,,,,no", {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
@@ -33,7 +33,6 @@ export async function handleYemot(request, env) {
         const studentName = `${student.first_name} ${student.last_name}`;
         const dateString = `${day} לחודש ${month}`;
         
-        // הטקסט שונה: כל הנקודות הוסרו והוחלפו בפסיקים כדי לא לשבור את שרשור הפקודות של ימות המשיח
         const welcomeMessage = `t-שלום ${studentName}, התאריך היום הוא ${dateString}, להגעה עכשיו הקש כוכבית, להגעה לפני מספר דקות הקש את מספר הדקות ולסיום סולמית, להגעה בשעה מסויימת הקש את השעה בארבע ספרות ולסיום סולמית`;
         
         return new Response(`read=${welcomeMessage}=arrival_input,,,,,NO,,,,,,,,,no`, {
@@ -44,7 +43,8 @@ export async function handleYemot(request, env) {
     // שלב 3: התקבל גם קוד תלמיד וגם קלט זמן. מעדכנים את המערכת.
     try {
         if (isSaturday(current.date)) {
-            return new Response("id_list_message=t-לא ניתן להזין נוכחות ביום שבת", {
+            // הוספת & בסוף
+            return new Response("id_list_message=t-לא ניתן להזין נוכחות ביום שבת&", {
                 headers: { 'Content-Type': 'text/plain; charset=utf-8' }
             });
         }
@@ -92,19 +92,21 @@ export async function handleYemot(request, env) {
             ).bind(studentCode, finalDate, finalTime).run();
         }
 
-        // הוספת הודעת איחור במידת הצורך (עם פסיק ולא נקודה)
+        // הוספת הודעת איחור במידת הצורך
         let targetTime = await getSetting(env, 'target_arrival_time') || '08:30';
         const lateMinutes = calculateLateMinutes(finalTime, targetTime);
         if (lateMinutes > 0) {
             ttsResponse += `, איחור של ${lateMinutes} דקות`;
         }
 
-        return new Response(`id_list_message=${ttsResponse}`, {
+        // הוספת & בסוף
+        return new Response(`id_list_message=${ttsResponse}&`, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
 
     } catch (error) {
-        return new Response(`id_list_message=t-שגיאת מערכת בהזנת הנתונים`, {
+        // הוספת & בסוף
+        return new Response(`id_list_message=t-שגיאת מערכת בהזנת הנתונים&`, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
     }
