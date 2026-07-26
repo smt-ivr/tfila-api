@@ -13,7 +13,6 @@ export async function handleCheckin(request, env) {
     let finalDate;
     let finalTime;
 
-    // לוגיקת זיהוי הזמן המבוקש
     if (mode === 'now') {
         const current = getCurrentIsraelTime();
         finalDate = current.date;
@@ -36,15 +35,14 @@ export async function handleCheckin(request, env) {
         finalTime = specificTime;
     }
 
-    // חסימת עדכון ליום שבת
     if (isSaturday(finalDate)) {
         throw new Error("לא ניתן להזין נוכחות ליום שבת (היום ה-6 בשבוע)");
     }
 
+    // אנו עדיין שולפים ומחשבים פה כדי להחזיר לממשק המשתמש (HTML) הודעה כמה דקות הוא איחר עכשיו
     let targetTime = await getSetting(env, 'target_arrival_time') || '08:30';
     const lateMinutes = calculateLateMinutes(finalTime, targetTime);
 
-    // בדיקה האם כבר קיימת רשומה לתלמיד הזה באותו היום
     const existingRecord = await env.DB.prepare(
         "SELECT id FROM attendance WHERE student_code = ? AND date = ?"
     ).bind(code, finalDate).first();
@@ -52,16 +50,16 @@ export async function handleCheckin(request, env) {
     let isUpdate = false;
 
     if (existingRecord) {
-        // עדכון הרשומה הקיימת (למניעת כפילויות)
+        // עדכון רק של שעת ההגעה (ללא late_minutes)
         await env.DB.prepare(
-            "UPDATE attendance SET time_arrived = ?, late_minutes = ? WHERE id = ?"
-        ).bind(finalTime, lateMinutes, existingRecord.id).run();
+            "UPDATE attendance SET time_arrived = ? WHERE id = ?"
+        ).bind(finalTime, existingRecord.id).run();
         isUpdate = true;
     } else {
-        // הכנסת רשומה חדשה
+        // הכנסה רק של התאריך ושעת ההגעה
         await env.DB.prepare(
-            "INSERT INTO attendance (student_code, date, time_arrived, late_minutes) VALUES (?, ?, ?, ?)"
-        ).bind(code, finalDate, finalTime, lateMinutes).run();
+            "INSERT INTO attendance (student_code, date, time_arrived) VALUES (?, ?, ?)"
+        ).bind(code, finalDate, finalTime).run();
     }
 
     return {
@@ -69,7 +67,7 @@ export async function handleCheckin(request, env) {
         student: `${student.first_name} ${student.last_name}`,
         date: finalDate,
         time_arrived: finalTime,
-        late_minutes: lateMinutes,
+        late_minutes: lateMinutes, // מחזירים רק כמידע לממשק, לא נשמר בטבלה
         is_update: isUpdate
     };
 }
