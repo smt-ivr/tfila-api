@@ -2,6 +2,7 @@ import { handleCheckin } from './checkin.js';
 import { handleReports } from './reports.js';
 import { handleSettings } from './settings.js';
 import { handleStudents } from './students.js';
+import { handleYemot } from './yemot.js'; // ייבוא הנתיב של ימות המשיח
 import { getCurrentIsraelTime } from './utils.js';
 
 const corsHeaders = {
@@ -27,6 +28,11 @@ export default {
         const path = url.pathname;
 
         try {
+            // נתיב מיוחד עבור ימות המשיח (מחזיר טקסט רגיל ולא JSON)
+            if (path.endsWith('/yemot')) {
+                return await handleYemot(request, env);
+            }
+
             if (path.endsWith('/system-time') && request.method === 'GET') {
                 return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
             }
@@ -70,9 +76,6 @@ export default {
                 return jsonResponse({ message: "התלמיד נוסף בהצלחה" });
             }
 
-            // --- תוספות חדשות: עריכה ומחיקת תלמיד ---
-
-            // נתיב לעדכון פרטי תלמיד (שם וכיתה)
             if (path.endsWith('/update-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
                 
@@ -83,14 +86,10 @@ export default {
                 return jsonResponse({ message: "פרטי התלמיד עודכנו בהצלחה" });
             }
 
-            // נתיב למחיקת תלמיד
             if (path.endsWith('/delete-student') && request.method === 'POST') {
                 const { code } = await request.json();
                 
-                // 1. מחיקת כל נוכחות התלמיד (הלוגים שלו) כדי לא להשאיר שאריות במסד
                 await env.DB.prepare("DELETE FROM attendance WHERE student_code = ?").bind(code).run();
-                
-                // 2. מחיקת התלמיד עצמו
                 await env.DB.prepare("DELETE FROM students WHERE code = ?").bind(code).run();
                 
                 return jsonResponse({ message: "התלמיד וכל נתוני הנוכחות שלו נמחקו לצמיתות" });
