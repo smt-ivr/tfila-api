@@ -41,7 +41,6 @@ export default {
                 return jsonResponse(result);
             }
             
-            // נתיב חדש למשיכת כל התלמידים
             if (path.endsWith('/students') && request.method === 'GET') {
                 const result = await handleStudents(request, env);
                 return jsonResponse(result);
@@ -54,6 +53,19 @@ export default {
             
             if (path.endsWith('/add-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
+                
+                // חסימה ותשובה מסודרת: בדיקה האם קוד התלמיד כבר קיים במערכת
+                const existingStudent = await env.DB.prepare(
+                    "SELECT code FROM students WHERE code = ?"
+                ).bind(code).first();
+                
+                if (existingStudent) {
+                    // החזרת תשובה מסודרת עם סטטוס 400 (בקשה לא תקינה)
+                    return jsonResponse({ 
+                        error: `שגיאה: קוד תלמיד '${code}' כבר קיים במערכת עבור תלמיד אחר. לא ניתן להזין קוד כפול.` 
+                    }, 400);
+                }
+                
                 await env.DB.prepare(
                     "INSERT INTO students (code, first_name, last_name, class_name) VALUES (?, ?, ?, ?)"
                 ).bind(code, first_name, last_name, class_name).run();
@@ -63,7 +75,8 @@ export default {
             return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
 
         } catch (error) {
-            return jsonResponse({ error: error.message }, 500);
+            // לכידת שגיאות כללית למקרה של נפילות שרת אחרות (כדי שלא יקרוס)
+            return jsonResponse({ error: "שגיאת שרת פנימית: " + error.message }, 500);
         }
     }
 };
