@@ -54,13 +54,11 @@ export default {
             if (path.endsWith('/add-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
                 
-                // חסימה ותשובה מסודרת: בדיקה האם קוד התלמיד כבר קיים במערכת
                 const existingStudent = await env.DB.prepare(
                     "SELECT code FROM students WHERE code = ?"
                 ).bind(code).first();
                 
                 if (existingStudent) {
-                    // החזרת תשובה מסודרת עם סטטוס 400 (בקשה לא תקינה)
                     return jsonResponse({ 
                         error: `שגיאה: קוד תלמיד '${code}' כבר קיים במערכת עבור תלמיד אחר. לא ניתן להזין קוד כפול.` 
                     }, 400);
@@ -72,10 +70,35 @@ export default {
                 return jsonResponse({ message: "התלמיד נוסף בהצלחה" });
             }
 
+            // --- תוספות חדשות: עריכה ומחיקת תלמיד ---
+
+            // נתיב לעדכון פרטי תלמיד (שם וכיתה)
+            if (path.endsWith('/update-student') && request.method === 'POST') {
+                const { code, first_name, last_name, class_name } = await request.json();
+                
+                await env.DB.prepare(
+                    "UPDATE students SET first_name = ?, last_name = ?, class_name = ? WHERE code = ?"
+                ).bind(first_name, last_name, class_name, code).run();
+                
+                return jsonResponse({ message: "פרטי התלמיד עודכנו בהצלחה" });
+            }
+
+            // נתיב למחיקת תלמיד
+            if (path.endsWith('/delete-student') && request.method === 'POST') {
+                const { code } = await request.json();
+                
+                // 1. מחיקת כל נוכחות התלמיד (הלוגים שלו) כדי לא להשאיר שאריות במסד
+                await env.DB.prepare("DELETE FROM attendance WHERE student_code = ?").bind(code).run();
+                
+                // 2. מחיקת התלמיד עצמו
+                await env.DB.prepare("DELETE FROM students WHERE code = ?").bind(code).run();
+                
+                return jsonResponse({ message: "התלמיד וכל נתוני הנוכחות שלו נמחקו לצמיתות" });
+            }
+
             return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
 
         } catch (error) {
-            // לכידת שגיאות כללית למקרה של נפילות שרת אחרות (כדי שלא יקרוס)
             return jsonResponse({ error: "שגיאת שרת פנימית: " + error.message }, 500);
         }
     }
