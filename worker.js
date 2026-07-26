@@ -1,47 +1,79 @@
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
+import { handleCheckin } from './checkin.js';
+import { handleReports } from './reports.js';
+import { handleSettings } from './settings.js';
+import { getCurrentIsraelTime } from './utils.js';
 
-import authRoutes from './auth.js';
-import topicsRoutes from './topics.js';
-import adminRoutes from './admin.js';
-
-const app = new Hono().basePath('/forum/api');
-
-app.use('/*', cors());
-
-app.onError((err, c) => {
-  console.error('API Error:', err);
-  return c.json({ error: 'שגיאת שרת פנימית', message: err.message }, 500);
-});
-
-const dbAuthMiddleware = async (c, next) => {
-    const authHeader = c.req.header('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        const db = c.env.DB;
-        const user = await db.prepare('SELECT * FROM users WHERE token = ?').bind(token).first();
-        if (user) {
-            c.set('user', user);
-        }
-    }
-    await next();
+// הגדרות CORS כדי לאפשר לממשק HTML מקומי לדבר עם השרת
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-app.get('/', (c) => c.json({ status: 'ok' }));
+// פונקציית עזר להחזרת תשובות מסודרות
+function jsonResponse(data, status = 200) {
+    return new Response(JSON.stringify(data), {
+        status: status,
+        headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+        }
+    });
+}
 
-app.use('/auth/me', dbAuthMiddleware);
-app.use('/topics/*', dbAuthMiddleware);
-app.use('/admin/*', dbAuthMiddleware);
+export default {
+    async fetch(request, env, ctx) {
+        // טיפול אוטומטי בבקשות Preflight של הדפדפן (חובה עבור HTML מקומי)
+        if (request.method === 'OPTIONS') {
+            return new Response(null, { headers: corsHeaders });
+        }
 
-app.route('/auth', authRoutes);
+        const url = new URL(request.url);
+        const path = url.pathname;
 
-app.use('/topics/*', async (c, next) => {
-    if (c.req.method !== 'GET' && !c.get('user')) {
-        return c.json({ error: 'לא מורשה' }, 401);
+        try {
+            // ניתוב לבדיקת מצב השעון של השרת
+            if (path === '/system-time' && request.method === 'GET') {
+                const currentTime = getCurrentIsraelTime();
+                return jsonResponse({
+                    message: "זמן שרת נוכחי",
+                    ...currentTime
+                });
+            }
+
+            // ניתוב לרישום הגעה
+            if (path === '/checkin' && request.method === 'POST') {
+                const result = await handleCheckin(request, env);
+                return jsonResponse(result);
+            }
+
+            // ניתוב לדוחות
+            if (path === '/reports' && request.method === 'GET') {
+                const result = await handleReports(request, env);
+                return jsonResponse(result);
+            }
+
+            // ניתוב להגדרות המערכת
+            if (path === '/settings') {
+                const result = await handleSettings(request, env);
+                return jsonResponse(result);
+            }
+            
+            // ניתוב להוספת תלמיד ידנית (למקרה הצורך)
+            if (path === '/add-student' && request.method === 'POST') {
+                const { code, first_name, last_name, class_name } = await request.json();
+                await env.DB.prepare(
+                    "INSERT INTO students (code, first_name, last_name, class_name) VALUES (?, ?, ?, ?)"
+                ).bind(code, first_name, last_name, class_name).run();
+                return jsonResponse({ message: "התלמיד נוסף בהצלחה" });
+            }
+
+            // נתיב לא ידוע
+            return jsonResponse({ error: "הנתיב לא קיים במערכת" }, 404);
+
+        } catch (error) {
+            // טיפול מרכזי בשגיאות בכל האפליקציה
+            return jsonResponse({ error: error.message }, 500);
+        }
     }
-    await next();
-});
-app.route('/topics', topicsRoutes);
-app.route('/admin', adminRoutes);
-
-export default app;
+};
