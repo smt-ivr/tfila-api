@@ -1,4 +1,3 @@
-// קבלת הזמן הנוכחי המדויק בשעון ישראל
 export function getCurrentIsraelTime() {
     const now = new Date();
     const options = { timeZone: 'Asia/Jerusalem', hour12: false };
@@ -9,7 +8,6 @@ export function getCurrentIsraelTime() {
     return { date, time };
 }
 
-// חישוב כמות דקות איחור
 export function calculateLateMinutes(arrivedTime, targetTime) {
     const [arrH, arrM] = arrivedTime.split(':').map(Number);
     const [tarH, tarM] = targetTime.split(':').map(Number);
@@ -19,6 +17,11 @@ export function calculateLateMinutes(arrivedTime, targetTime) {
     
     const lateMinutes = arrivedTotal - targetTotal;
     
-    // אם הגיע לפני הזמן, מחזיר 0 (אין איחור שלילי)
     return Math.max(0, lateMinutes);
+}
+
+// פונקציה לבדיקה האם התאריך נופל על יום שבת
+export function isSaturday(dateString) {
+    const d = new Date(dateString);
+    return d.getDay() === 6; // 0=ראשון, ..., 6=שבת
 }
