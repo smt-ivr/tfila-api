@@ -4,13 +4,11 @@ export async function getSetting(env, key) {
 }
 
 export async function handleSettings(request, env) {
-    // קבלת ההגדרות (למשל, כדי להציג בממשק מתי צריך להגיע)
     if (request.method === "GET") {
         const targetTime = await getSetting(env, 'target_arrival_time');
         return { target_arrival_time: targetTime };
     }
     
-    // עדכון שעת הגעה
     if (request.method === "POST") {
         const body = await request.json();
         if (body.target_arrival_time) {
