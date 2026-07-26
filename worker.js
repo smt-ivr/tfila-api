@@ -32,8 +32,10 @@ export default {
         const path = url.pathname;
 
         try {
+            // שימוש ב-endsWith כדי להתעלם מקידומות כמו /tfila/api/
+            
             // ניתוב לבדיקת מצב השעון של השרת
-            if (path === '/system-time' && request.method === 'GET') {
+            if (path.endsWith('/system-time') && request.method === 'GET') {
                 const currentTime = getCurrentIsraelTime();
                 return jsonResponse({
                     message: "זמן שרת נוכחי",
@@ -42,25 +44,25 @@ export default {
             }
 
             // ניתוב לרישום הגעה
-            if (path === '/checkin' && request.method === 'POST') {
+            if (path.endsWith('/checkin') && request.method === 'POST') {
                 const result = await handleCheckin(request, env);
                 return jsonResponse(result);
             }
 
             // ניתוב לדוחות
-            if (path === '/reports' && request.method === 'GET') {
+            if (path.endsWith('/reports') && request.method === 'GET') {
                 const result = await handleReports(request, env);
                 return jsonResponse(result);
             }
 
             // ניתוב להגדרות המערכת
-            if (path === '/settings') {
+            if (path.endsWith('/settings')) {
                 const result = await handleSettings(request, env);
                 return jsonResponse(result);
             }
             
-            // ניתוב להוספת תלמיד ידנית (למקרה הצורך)
-            if (path === '/add-student' && request.method === 'POST') {
+            // ניתוב להוספת תלמיד ידנית
+            if (path.endsWith('/add-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
                 await env.DB.prepare(
                     "INSERT INTO students (code, first_name, last_name, class_name) VALUES (?, ?, ?, ?)"
@@ -69,7 +71,7 @@ export default {
             }
 
             // נתיב לא ידוע
-            return jsonResponse({ error: "הנתיב לא קיים במערכת" }, 404);
+            return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
 
         } catch (error) {
             // טיפול מרכזי בשגיאות בכל האפליקציה
