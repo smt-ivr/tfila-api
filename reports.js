@@ -1,10 +1,35 @@
 import { getCurrentIsraelTime, getWeekRange } from './utils.js';
 
+// פונקציה חדשה ששולפת את פרשת השבוע לפי התאריך של שבת
+async function getWeeklyParasha(weekStartDate) {
+    try {
+        const d = new Date(weekStartDate);
+        d.setDate(d.getDate() + 6); // מוסיף 6 ימים כדי להגיע ליום שבת
+        const saturdayStr = d.toISOString().split('T')[0];
+        
+        const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${saturdayStr}&lg=h`);
+        const data = await response.json();
+        
+        if (data.events) {
+            const parashaEvent = data.events.find(e => {
+                const clean = e.replace(/[\u0591-\u05C7]/g, '');
+                return clean.includes("פרשת");
+            });
+            if (parashaEvent) return parashaEvent.replace(/[\u0591-\u05C7\.]/g, ''); // מסיר ניקוד ונקודות
+        }
+        return "";
+    } catch (e) {
+        return "";
+    }
+}
+
 export async function getWeeklyData(env, targetDate) {
     const { start, end } = getWeekRange(targetDate);
     const today = getCurrentIsraelTime().date;
     
-    // שליפת תלמידים וחריגים
+    // שליפת הפרשה לשבוע הנוכחי
+    const parasha = await getWeeklyParasha(start);
+    
     const { results: students } = await env.DB.prepare(
         "SELECT * FROM students ORDER BY class_name, last_name, first_name"
     ).all();
@@ -13,7 +38,6 @@ export async function getWeeklyData(env, targetDate) {
         "SELECT * FROM exceptions WHERE date >= ? AND date <= ?"
     ).bind(start, end).all();
 
-    // בניית מערך של הימים שצריך להציג (רק עד היום הנוכחי)
     const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
     const daysToShow = [];
     
@@ -22,13 +46,11 @@ export async function getWeeklyData(env, targetDate) {
         currentDay.setDate(currentDay.getDate() + i);
         const dateStr = currentDay.toISOString().split('T')[0];
         
-        // מוסיף את היום לדוח רק אם הוא היום או תאריך שעבר
         if (dateStr <= today) {
             daysToShow.push({ index: i, name: dayNames[i], dateStr });
         }
     }
     
-    // הגנת נפילה: אם מבקשים בטעות שבוע עתידי לגמרי, נציג את כל הימים כדי לא להחזיר דוח ריק
     if (daysToShow.length === 0) {
         for (let i = 0; i <= 5; i++) daysToShow.push({ index: i, name: dayNames[i] });
     }
@@ -59,7 +81,8 @@ export async function getWeeklyData(env, targetDate) {
         };
     });
 
-    return { weekStart: start, weekEnd: end, daysToShow, report };
+    // מחזיר עכשיו גם את הפרשה ל-Frontend
+    return { weekStart: start, weekEnd: end, parasha, daysToShow, report };
 }
 
 export async function handleReports(request, env) {
