@@ -12,13 +12,8 @@ export async function handleSendEmail(request, env) {
     const current = getCurrentIsraelTime();
     const data = await getWeeklyData(env, current.date);
     
-    // בניית תוכן ה-HTML למייל
     const htmlContent = buildEmailHTML(data);
 
-    // יצירת קובץ אקסל/CSV מצורף באופן אוטומטי מנתוני הדוח
-    const csvAttachment = generateExcelAttachment(data);
-
-    // שליחת המייל דרך Resend כולל הקובץ המצורף
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -26,62 +21,18 @@ export async function handleSendEmail(request, env) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            from: 'מערכת דיווחים <admin@smti.uk>',
+            from: 'מערכת דיווחים <tfila@smti.uk>',
             to: email,
             subject: `דוח מצב שבועי מפורט (${data.weekStart} עד ${data.weekEnd})`,
-            html: htmlContent,
-            attachments: [
-                {
-                    filename: `attendance-report_${data.weekStart}_to_${data.weekEnd}.csv`,
-                    content: csvAttachment
-                }
-            ]
+            html: htmlContent
         })
     });
 
     if (!res.ok) {
-        const errorData = await res.text();
-        throw new Error("שגיאה בשליחת המייל דרך שרת הדואר: " + errorData);
+        throw new Error("שגיאה בשליחת המייל דרך שרת הדואר");
     }
 
-    return { message: "הדוח והקובץ המצורף נשלחו בהצלחה למייל: " + email };
-}
-
-// פונקציה לייצור קובץ CSV תומך אקסל בעברית
-function generateExcelAttachment(data) {
-    let csvRows = [];
-    
-    // כותרות עמודות
-    let headers = ["שם פרטי", "שם משפחה", "כיתה"];
-    data.daysToShow.forEach(d => headers.push(d.name));
-    csvRows.push(headers.join(","));
-
-    // נתוני תלמידים
-    data.report.forEach(student => {
-        let row = [
-            `"${student.first_name}"`,
-            `"${student.last_name}"`,
-            `"${student.class_name || ''}"`
-        ];
-        
-        data.daysToShow.forEach(day => {
-            const status = student.weeklyStatus[day.index];
-            if (status.type === 'ok') {
-                row.push('"V"');
-            } else if (status.type === 'absence') {
-                row.push('"חיסור (-)"');
-            } else if (status.type === 'late') {
-                row.push(`"איחור ${status.minutes} דק'"`);
-            }
-        });
-        
-        csvRows.push(row.join(","));
-    });
-
-    const csvString = csvRows.join("\n");
-    // הוספת BOM (utf8) כדי שתוכנת Excel תזהה עברית בצורה תקינה לחלוטין
-    const bom = "\uFEFF";
-    return btoa(unescape(encodeURIComponent(bom + csvString)));
+    return { message: "הדוח נשלח בהצלחה למייל: " + email };
 }
 
 function buildEmailHTML(data) {
@@ -97,11 +48,11 @@ function buildEmailHTML(data) {
         data.daysToShow.forEach(day => {
             const status = student.weeklyStatus[day.index];
             if (status.type === 'ok') {
-                cells += `<td style="color: #059669; font-weight: bold; font-size: 16px; text-align: center;">V</td>`;
+                cells += `<td style="color: #059669; font-weight: bold; font-size: 16px;">V</td>`;
             } else if (status.type === 'absence') {
-                cells += `<td style="color: #DC2626; font-weight: bold; font-size: 20px; text-align: center;">-</td>`;
+                cells += `<td style="color: #DC2626; font-weight: bold; font-size: 20px;">-</td>`;
             } else if (status.type === 'late') {
-                cells += `<td style="color: #D97706; font-weight: 500; text-align: center;">${status.minutes} דק'</td>`;
+                cells += `<td style="color: #D97706; font-weight: 500;">${status.minutes} דקות איחור</td>`;
             }
         });
         
@@ -110,15 +61,10 @@ function buildEmailHTML(data) {
                 <td style="border: 1px solid #E5E7EB; padding: 12px; font-weight: 600; color: #111827;">${student.first_name}</td>
                 <td style="border: 1px solid #E5E7EB; padding: 12px; font-weight: 600; color: #111827;">${student.last_name}</td>
                 <td style="border: 1px solid #E5E7EB; padding: 12px; color: #4B5563;">${student.class_name || ''}</td>
-                ${cells}
+                ${cells.replace(/<td/g, '<td style="border: 1px solid #E5E7EB; padding: 12px; text-align: center;"')}
             </tr>
         `;
     });
-
-    let subtitle = `מתאריך ${data.weekStart} עד ${data.weekEnd}`;
-    if (data.parasha) {
-        subtitle += ` | ${data.parasha}`;
-    }
 
     return `
         <!DOCTYPE html>
@@ -137,7 +83,7 @@ function buildEmailHTML(data) {
         <body dir="rtl" style="direction: rtl; text-align: right;">
             <div class="container" dir="rtl" style="direction: rtl;">
                 <h2>דוח מצב שבועי</h2>
-                <p class="dates">${subtitle}</p>
+                <p class="dates">מתאריך ${data.weekStart} עד ${data.weekEnd}</p>
                 <table dir="rtl" style="direction: rtl; width: 100%;">
                     <thead>
                         <tr>
@@ -151,9 +97,6 @@ function buildEmailHTML(data) {
                         ${rows}
                     </tbody>
                 </table>
-                <p style="margin-top: 20px; font-size: 13px; color: #6B7280; text-align: center;">
-                    קובץ נתונים מפורט (CSV) מצורף להודעה זו וניתן לפתיחה ישירה בתוכנות אקסל.
-                </p>
             </div>
         </body>
         </html>
