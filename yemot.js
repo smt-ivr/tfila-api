@@ -201,18 +201,19 @@ export async function handleYemot(request, env) {
             }
         } else {
             if (isCancel) {
+                // שינוי מהותי: ביטלנו את התנאי AND type = ? כדי שיאפס כל בעיית נוכחות
                 await env.DB.prepare(`
                     UPDATE exceptions 
                     SET type = NULL, minutes = NULL 
-                    WHERE student_code = ? AND date = ? AND type = ?
-                `).bind(studentCode, effectiveDate, dbType).run();
+                    WHERE student_code = ? AND date = ?
+                `).bind(studentCode, effectiveDate).run();
 
                 await env.DB.prepare(`
                     DELETE FROM exceptions 
                     WHERE student_code = ? AND date = ? AND (type IS NULL OR type = '') AND (bad_behavior IS NULL OR bad_behavior = 0)
                 `).bind(studentCode, effectiveDate).run();
 
-                return new Response(`read=t-בוטל דיווח ${actionVerb} לתלמיד ${student.first_name} ${student.last_name}, הקש תלמיד נוסף או כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+                return new Response(`read=t-בוטל דיווח נוכחות לתלמיד ${student.first_name} ${student.last_name}, הקש תלמיד נוסף או כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
             } else {
                 await env.DB.prepare(`
                     INSERT INTO exceptions (student_code, date, type, minutes) 
