@@ -1,26 +1,11 @@
 import { getCurrentIsraelTime, isSaturday } from './utils.js';
 import { handleSendEmail } from './email.js';
 
-// הפונקציה שחזרה למקומה: מביאה תאריך עברי ופרשה
 async function getHebrewDateString(dateString) {
     try {
-        const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateString}&lg=h`);
-        const data = await response.json();
-        let parasha = "";
-        
-        if (data.events && data.events.length > 0) {
-            const parashaEvent = data.events.find(e => {
-                const cleanEvent = e.replace(/[\u0591-\u05C7]/g, ''); 
-                return cleanEvent.includes("פרשת");
-            });
-            if (parashaEvent) parasha = parashaEvent.replace(/[\u0591-\u05C7]/g, '');
-        }
-        
         const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
         const dayName = days[new Date(dateString).getDay()];
-        
-        let resText = parasha ? `יום ${dayName} ${parasha}` : `יום ${dayName}`;
-        return resText.replace(/\./g, ''); 
+        return `יום ${dayName}`;
     } catch (error) {
         return ""; 
     }
@@ -51,32 +36,31 @@ export async function handleYemot(request, env) {
     const reportType = url.searchParams.get('report_type'); 
     const customDateInput = url.searchParams.get('custom_date_input'); 
     const finalReportType = url.searchParams.get('final_report_type'); 
-    const inputData = url.searchParams.get('input_data'); 
     
     const current = getCurrentIsraelTime();
     
     if (reportType === '0') {
         const email = url.searchParams.get('email');
         if (!email) {
-            return new Response("id_list_message=t-אין אימייל לשליחה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            return new Response("id_list_message=t-כתובת אימייל חסרה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
         try {
             await handleSendEmail(request, env);
-            return new Response("id_list_message=t-הדוח נשלח בהצלחה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            return new Response("id_list_message=t-האימייל נשלח בהצלחה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         } catch (e) {
-            return new Response("id_list_message=t-שגיאה בשליחת האימייל&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            return new Response("id_list_message=t-שגיאה בשליחת אימייל&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
     }
-
+    
     let effectiveDate = current.date;
     if (reportType === '3' && customDateInput) {
         const calcDate = calculateCustomDate(current.date, customDateInput);
         if (calcDate) effectiveDate = calcDate;
-        else return new Response("id_list_message=t-תאריך לא תקין השלוחה תתנתק&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        else return new Response("id_list_message=t-תאריך שגוי&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
     
     if (isSaturday(effectiveDate)) {
-        return new Response("id_list_message=t-לא ניתן להזין נתונים ליום שבת השלוחה תתנתק&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response("id_list_message=t-לא ניתן להזין נתונים בשבת&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     const actualType = (reportType === '3') ? finalReportType : reportType;
@@ -84,50 +68,84 @@ export async function handleYemot(request, env) {
     if (!reportType) {
         const dateText = await getHebrewDateString(current.date);
         const welcomeMessage = dateText 
-            ? `t-${dateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`
-            : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`; 
+            ? `t-${dateText}, להזנת איחורים הקישו 1, להזנת חיסורים הקישו 2, לתאריך אחר הקישו 3, לשליחת דוח שבועי למייל הקישו 0`
+            : `t-להזנת איחורים הקישו 1, להזנת חיסורים הקישו 2, לתאריך אחר הקישו 3, לשליחת דוח שבועי למייל הקישו 0`;
+        
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,1230,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '3' && !customDateInput) {
-        const datePrompt = "t-נא בחר את התאריך הרצוי בארבע ספרות יום וחודש או הקישו 1 וסולמית לאתמול או 2 וסולמית לשלשום";
+        const datePrompt = "t-הקישו 1 לאתמול, 2 לשלשום, או תאריך מותאם של ארבע ספרות יום וחודש";
         return new Response(`read=${datePrompt}=custom_date_input,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '3' && customDateInput && !finalReportType) {
         const dateText = await getHebrewDateString(effectiveDate);
         const prompt = dateText 
-            ? `t-${dateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2`
-            : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2`;
+            ? `t-${dateText}, להזנת איחורים הקישו 1, להזנת חיסורים הקישו 2`
+            : `t-להזנת איחורים הקישו 1, להזנת חיסורים הקישו 2`;
         return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,120,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    if (!inputData) {
-        if (actualType === '2') return new Response("read=t-הקש את קוד התלמיד ולסיום סולמית=input_data,,,,,NO,,,,,,,,,no", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-        else if (actualType === '1') return new Response("read=t-הקש את קוד התלמיד כוכבית ואת דקות האיחור ולסיום סולמית=input_data,,,,,NO,,,,,,,,,no", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-        else return new Response("id_list_message=t-בחירה שגויה השלוחה תתנתק&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    // בחירת התחילית לפי סוג הדיווח - לאיחורים late_data ולחיסורים abs_data
+    const prefix = actualType === '2' ? 'abs_data' : 'late_data';
+    let currentIndex = 1;
+    let latestInput = null;
+
+    // מציאת הפרמטר האחרון שסופק ב-URL (הלולאה תמצא את המספר האחרון ותקדם את המונה להבא בתור)
+    while (url.searchParams.has(`${prefix}_${currentIndex}`)) {
+        latestInput = url.searchParams.get(`${prefix}_${currentIndex}`);
+        currentIndex++;
+    }
+
+    // אם עדיין לא הוקש נתון כלשהו לשלב זה, נבקש את הנתון הראשון
+    if (currentIndex === 1) {
+        if (actualType === '2') {
+            return new Response(`read=t-נא להקיש קוד תלמיד לחיסור, ולסיום הקישו כוכבית=${prefix}_1,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        } else if (actualType === '1') {
+            return new Response(`read=t-נא להקיש קוד תלמיד לאיחור, כוכבית, ומספר הדקות. ולסיום הקישו כוכבית=${prefix}_1,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        } else {
+            return new Response("id_list_message=t-שגיאה בסוג דוח&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        }
+    }
+
+    // בדיקת תנאי יציאה למערכת בחזרה לתיקיה
+    if (latestInput === '*') {
+        return new Response("go_to_folder=.&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     try {
-        let studentCode = inputData;
+        let studentCode = latestInput;
         let minutes = null;
 
-        if (actualType === '1') { 
-            const parts = inputData.split('*');
-            if (parts.length < 2) return new Response("id_list_message=t-הקלט שגוי חסר כוכבית או דקות איחור הדיווח לא נשמר&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        if (actualType === '1') {
+            const parts = latestInput.split('*');
+            if (parts.length < 2) {
+                // שגיאה בפורמט – מבקש שוב עם הפרמטר של השלב הבא
+                return new Response(`read=t-שגיאה בפורמט. נא להקיש קוד תלמיד כוכבית ומספר דקות, או כוכבית לסיום=${prefix}_${currentIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            }
             studentCode = parts[0];
             minutes = parseInt(parts[1], 10);
-            if (isNaN(minutes)) return new Response("id_list_message=t-מספר דקות לא תקין הדיווח לא נשמר&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            
+            if (isNaN(minutes)) {
+                // שגיאה בדקות - מבקש שוב
+                return new Response(`read=t-שגיאה במספר הדקות. נסו שוב או הקישו כוכבית לסיום=${prefix}_${currentIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            }
         }
 
         const student = await env.DB.prepare("SELECT * FROM students WHERE code = ?").bind(studentCode).first();
-        if (!student) return new Response("id_list_message=t-קוד תלמיד שגוי או לא קיים במערכת הדיווח לא נשמר&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        
+        if (!student) {
+             // תלמיד לא נמצא – מבקש שוב
+             return new Response(`read=t-תלמיד לא נמצא. נסו שוב או הקישו כוכבית לסיום=${prefix}_${currentIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        }
 
         const typeDb = actualType === '2' ? 'absence' : 'late';
 
         if (actualType === '1' && minutes === 0) {
             await env.DB.prepare("DELETE FROM exceptions WHERE student_code = ? AND date = ?").bind(studentCode, effectiveDate).run();
-            return new Response(`id_list_message=t-עודכן בהצלחה לתלמיד ${student.first_name} ${student.last_name} הגעה בזמן&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            // ביטול איחור – מבקש את התלמיד הבא
+            return new Response(`read=t-בוטל איחור עבור ${student.first_name} ${student.last_name}. להזנת תלמיד נוסף הקישו נתונים, או כוכבית לסיום=${prefix}_${currentIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
 
         const existingRecord = await env.DB.prepare("SELECT id FROM exceptions WHERE student_code = ? AND date = ?").bind(studentCode, effectiveDate).first();
@@ -139,11 +157,15 @@ export async function handleYemot(request, env) {
             DO UPDATE SET type = excluded.type, minutes = excluded.minutes
         `).bind(studentCode, effectiveDate, typeDb, minutes).run();
 
-        const actionVerb = existingRecord ? "עדכנתם בהצלחה" : "דיווחתם בהצלחה";
-        let successMessage = typeDb === 'absence' ? `t-${actionVerb} לתלמיד ${student.first_name} ${student.last_name} חיסור` : `t-${actionVerb} לתלמיד ${student.first_name} ${student.last_name} איחור של ${minutes} דקות`;
+        const actionVerb = existingRecord ? "עודכן" : "נשמר";
+        let successMessage = typeDb === 'absence' 
+            ? `t-${actionVerb} חיסור עבור ${student.first_name} ${student.last_name}. לתלמיד נוסף הקישו מספר זיהוי, או כוכבית לסיום` 
+            : `t-${actionVerb} איחור עבור ${student.first_name} ${student.last_name} ${minutes} דקות. להזנת איחור נוסף הקישו נתונים, או כוכבית לסיום`;
 
-        return new Response(`id_list_message=${successMessage}&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        // שמירה מוצלחת – מעבר חלק לבקשת התלמיד הבא
+        return new Response(`read=${successMessage}=${prefix}_${currentIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+
     } catch (error) {
-        return new Response(`id_list_message=t-שגיאת מערכת בהזנת הנתונים&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response(`read=t-שגיאת מערכת. נסו שוב או הקישו כוכבית לסיום=${prefix}_${currentIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 }
