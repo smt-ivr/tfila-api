@@ -1,8 +1,7 @@
-import { handleCheckin } from './checkin.js';
+import { handleExceptions } from './exceptions.js';
 import { handleReports } from './reports.js';
-import { handleSettings } from './settings.js';
 import { handleStudents } from './students.js';
-import { handleYemot } from './yemot.js'; // ייבוא הנתיב של ימות המשיח
+import { handleYemot } from './yemot.js';
 import { getCurrentIsraelTime } from './utils.js';
 
 const corsHeaders = {
@@ -28,7 +27,6 @@ export default {
         const path = url.pathname;
 
         try {
-            // נתיב מיוחד עבור ימות המשיח (מחזיר טקסט רגיל ולא JSON)
             if (path.endsWith('/yemot')) {
                 return await handleYemot(request, env);
             }
@@ -37,8 +35,9 @@ export default {
                 return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
             }
 
-            if (path.endsWith('/checkin') && request.method === 'POST') {
-                const result = await handleCheckin(request, env);
+            // נתיב הדיווח החדש מהווב
+            if (path.endsWith('/exception') && request.method === 'POST') {
+                const result = await handleExceptions(request, env);
                 return jsonResponse(result);
             }
 
@@ -51,24 +50,12 @@ export default {
                 const result = await handleStudents(request, env);
                 return jsonResponse(result);
             }
-
-            if (path.endsWith('/settings')) {
-                const result = await handleSettings(request, env);
-                return jsonResponse(result);
-            }
             
             if (path.endsWith('/add-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
                 
-                const existingStudent = await env.DB.prepare(
-                    "SELECT code FROM students WHERE code = ?"
-                ).bind(code).first();
-                
-                if (existingStudent) {
-                    return jsonResponse({ 
-                        error: `שגיאה: קוד תלמיד '${code}' כבר קיים במערכת עבור תלמיד אחר. לא ניתן להזין קוד כפול.` 
-                    }, 400);
-                }
+                const existingStudent = await env.DB.prepare("SELECT code FROM students WHERE code = ?").bind(code).first();
+                if (existingStudent) return jsonResponse({ error: "קוד תלמיד כבר קיים." }, 400);
                 
                 await env.DB.prepare(
                     "INSERT INTO students (code, first_name, last_name, class_name) VALUES (?, ?, ?, ?)"
@@ -78,21 +65,17 @@ export default {
 
             if (path.endsWith('/update-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
-                
                 await env.DB.prepare(
                     "UPDATE students SET first_name = ?, last_name = ?, class_name = ? WHERE code = ?"
                 ).bind(first_name, last_name, class_name, code).run();
-                
-                return jsonResponse({ message: "פרטי התלמיד עודכנו בהצלחה" });
+                return jsonResponse({ message: "פרטי התלמיד עודכנו" });
             }
 
             if (path.endsWith('/delete-student') && request.method === 'POST') {
                 const { code } = await request.json();
-                
-                await env.DB.prepare("DELETE FROM attendance WHERE student_code = ?").bind(code).run();
+                await env.DB.prepare("DELETE FROM exceptions WHERE student_code = ?").bind(code).run();
                 await env.DB.prepare("DELETE FROM students WHERE code = ?").bind(code).run();
-                
-                return jsonResponse({ message: "התלמיד וכל נתוני הנוכחות שלו נמחקו לצמיתות" });
+                return jsonResponse({ message: "התלמיד וכל נתוניו נמחקו לצמיתות" });
             }
 
             return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
