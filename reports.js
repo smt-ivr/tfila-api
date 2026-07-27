@@ -65,16 +65,28 @@ export async function getWeeklyData(env, targetDate) {
             const exceptionToday = studentExceptions.find(e => e.date === dateStr);
             
             if (exceptionToday) {
+                const type = exceptionToday.type || 'ok';
+                const badBehavior = exceptionToday.bad_behavior === 1;
+                let behaviorMark = '';
+                
+                if (badBehavior) {
+                    behaviorMark = 'ב';
+                } else if (type === 'ok') {
+                    behaviorMark = 'א';
+                } // אם יש איחור או חיסור ללא הערה, המשתנה יישאר ריק
+
                 weeklyStatus[i] = { 
-                    type: exceptionToday.type || 'ok', 
+                    type: type, 
                     minutes: exceptionToday.minutes,
-                    badBehavior: exceptionToday.bad_behavior === 1
+                    badBehavior: badBehavior,
+                    behaviorMark: behaviorMark
                 };
             } else {
                 weeklyStatus[i] = { 
                     type: 'ok', 
                     minutes: null,
-                    badBehavior: false
+                    badBehavior: false,
+                    behaviorMark: 'א'
                 };
             }
         }
