@@ -44,7 +44,6 @@ function calculateCustomDate(currentDateStr, customInput) {
     return `${y}-${m}-${d}`;
 }
 
-// פונקציית עזר למציאת האינדקס האחרון שהתקבל בבקשה
 function getLatestInput(url, prefix) {
     let maxIndex = 0;
     let latestValue = null;
@@ -118,7 +117,6 @@ export async function handleYemot(request, env) {
         return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,123,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    // הגדרת הקידומת לפרמטרים והלוגיקה לפי סוג הדיווח
     let prefix = '';
     let actionVerb = '';
     let dbType = '';
@@ -133,7 +131,6 @@ export async function handleYemot(request, env) {
 
     const { maxIndex, latestValue, nextIndex } = getLatestInput(url, prefix);
 
-    // אם זו הפעם הראשונה שנכנסים לתפריט הספציפי, נבקש את הנתון הראשון
     if (maxIndex === 0) {
         let prompt = "";
         if (actualType === '1') prompt = "t-הקש קוד תלמיד, כוכבית, ומספר דקות איחור.";
@@ -143,7 +140,6 @@ export async function handleYemot(request, env) {
         return new Response(`read=${prompt}=${prefix}1,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    // בדיקת יציאה
     if (latestValue === '*') {
         return new Response("go_to_folder=.&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
@@ -163,7 +159,6 @@ export async function handleYemot(request, env) {
             }
             studentCode = parts[0];
             if (parts.length === 2 && parts[1] === '') {
-                 // הקישו קוד תלמיד ואחריו רק כוכבית, לצורך ביטול
                  isCancel = true;
             } else if (!isCancel) {
                 minutes = parseInt(parts[1], 10);
@@ -173,7 +168,6 @@ export async function handleYemot(request, env) {
             }
         }
         
-        // תמיכה בביטול איחור גם באמצעות הזנת 0 דקות
         if (actualType === '1' && minutes === 0) isCancel = true;
 
         const student = await env.DB.prepare("SELECT * FROM students WHERE code = ?").bind(studentCode).first();
@@ -181,18 +175,43 @@ export async function handleYemot(request, env) {
              return new Response(`read=t-תלמיד לא קיים. נסה שוב או הקש כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
 
-        // ביצוע הפעולה במסד הנתונים
         if (actualType === '3') {
             if (isCancel) {
-                await env.DB.prepare("DELETE FROM behavior WHERE student_code = ? AND date = ?").bind(studentCode, effectiveDate).run();
+                await env.DB.prepare(`
+                    UPDATE exceptions 
+                    SET bad_behavior = 0 
+                    WHERE student_code = ? AND date = ?
+                `).bind(studentCode, effectiveDate).run();
+                
+                await env.DB.prepare(`
+                    DELETE FROM exceptions 
+                    WHERE student_code = ? AND date = ? AND (type IS NULL OR type = '') AND (bad_behavior IS NULL OR bad_behavior = 0)
+                `).bind(studentCode, effectiveDate).run();
+
                 return new Response(`read=t-בוטל דיווח התנהגות לתלמיד ${student.first_name} ${student.last_name}, הקש תלמיד נוסף או כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
             } else {
-                await env.DB.prepare("INSERT INTO behavior (student_code, date) VALUES (?, ?) ON CONFLICT DO NOTHING").bind(studentCode, effectiveDate).run();
+                await env.DB.prepare(`
+                    INSERT INTO exceptions (student_code, date, bad_behavior) 
+                    VALUES (?, ?, 1)
+                    ON CONFLICT(student_code, date) 
+                    DO UPDATE SET bad_behavior = 1
+                `).bind(studentCode, effectiveDate).run();
+                
                 return new Response(`read=t-עודכנה התנהגות לא טובה לתלמיד ${student.first_name} ${student.last_name}, הקש תלמיד נוסף או כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
             }
         } else {
             if (isCancel) {
-                await env.DB.prepare("DELETE FROM exceptions WHERE student_code = ? AND date = ? AND type = ?").bind(studentCode, effectiveDate, dbType).run();
+                await env.DB.prepare(`
+                    UPDATE exceptions 
+                    SET type = NULL, minutes = NULL 
+                    WHERE student_code = ? AND date = ? AND type = ?
+                `).bind(studentCode, effectiveDate, dbType).run();
+
+                await env.DB.prepare(`
+                    DELETE FROM exceptions 
+                    WHERE student_code = ? AND date = ? AND (type IS NULL OR type = '') AND (bad_behavior IS NULL OR bad_behavior = 0)
+                `).bind(studentCode, effectiveDate).run();
+
                 return new Response(`read=t-בוטל דיווח ${actionVerb} לתלמיד ${student.first_name} ${student.last_name}, הקש תלמיד נוסף או כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
             } else {
                 await env.DB.prepare(`
