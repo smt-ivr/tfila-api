@@ -14,6 +14,10 @@ export async function handleSendEmail(request, env) {
     
     const htmlContent = buildEmailHTML(data);
 
+    const parashaText = data.parasha ? ` - ${data.parasha}` : '';
+    const yearText = data.heYear ? ` ${data.heYear}` : '';
+    const subjectLine = `דוח נוכחות שבועי${parashaText}${yearText}`;
+
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -23,7 +27,7 @@ export async function handleSendEmail(request, env) {
         body: JSON.stringify({
             from: 'מערכת נוכחות <tfila@smti.uk>',
             to: email,
-            subject: `דוח נוכחות שבועי (${data.weekStart} עד ${data.weekEnd})`,
+            subject: subjectLine,
             html: htmlContent
         })
     });
@@ -38,12 +42,10 @@ export async function handleSendEmail(request, env) {
 function buildEmailHTML(data) {
     let rows = '';
     
-    // כותרת עליונה לכל יום
     const dayHeaders = data.daysToShow.map(d => 
         `<th colspan="2" style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151; text-align: center;">${d.name}</th>`
     ).join('');
 
-    // תת-כותרות (זמן | התנהגות)
     const subHeaders = data.daysToShow.map(() => 
         `<th style="border: 1px solid #D1D5DB; padding: 6px; background-color: #F9FAFB; color: #4B5563; text-align: center; font-size: 13px; font-weight: normal;">זמן</th>
          <th style="border: 1px solid #D1D5DB; padding: 6px; background-color: #F9FAFB; color: #4B5563; text-align: center; font-size: 13px; font-weight: normal;">התנהגות</th>`
@@ -80,6 +82,10 @@ function buildEmailHTML(data) {
         `;
     });
 
+    const parashaText = data.parasha ? ` - ${data.parasha}` : '';
+    const yearText = data.heYear ? ` ${data.heYear}` : '';
+    const titleLine = `דוח נוכחות${parashaText}${yearText}`;
+
     return `
         <!DOCTYPE html>
         <html lang="he" dir="rtl">
@@ -88,16 +94,14 @@ function buildEmailHTML(data) {
             <style>
                 body { font-family: Arial, sans-serif; background-color: #F9FAFB; padding: 20px; direction: rtl; text-align: right; }
                 .container { max-width: 1100px; margin: 0 auto; background: white; border-radius: 8px; padding: 30px; border: 1px solid #E5E7EB; box-shadow: 0 4px 6px rgba(0,0,0,0.05); direction: rtl; }
-                h2 { color: #1F2937; margin-bottom: 5px; text-align: center; font-size: 24px; }
-                p.dates { text-align: center; color: #6B7280; margin-bottom: 25px; font-size: 15px; }
+                h2 { color: #1F2937; margin-bottom: 25px; text-align: center; font-size: 24px; }
                 table { border-collapse: collapse; width: 100%; border: 1px solid #D1D5DB; direction: rtl; }
                 th, td { text-align: right; font-size: 14px; }
             </style>
         </head>
         <body dir="rtl" style="direction: rtl; text-align: right;">
             <div class="container" dir="rtl" style="direction: rtl;">
-                <h2>דוח נוכחות - ${data.parasha}</h2>
-                <p class="dates">מתאריך ${data.weekStart} עד ${data.weekEnd}</p>
+                <h2>${titleLine}</h2>
                 <table dir="rtl" style="direction: rtl; width: 100%;">
                     <thead>
                         <tr>
