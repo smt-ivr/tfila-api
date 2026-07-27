@@ -1,6 +1,6 @@
 import { getCurrentIsraelTime, getWeekRange } from './utils.js';
 
-async function getWeeklyParasha(weekStartDate) {
+async function getWeeklyHebrewInfo(weekStartDate) {
     try {
         const d = new Date(weekStartDate);
         d.setDate(d.getDate() + 6); 
@@ -9,16 +9,19 @@ async function getWeeklyParasha(weekStartDate) {
         const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${saturdayStr}&lg=h`);
         const data = await response.json();
         
+        let parasha = "";
+        let heYear = data.heDateParts ? data.heDateParts.y : "";
+
         if (data.events) {
             const parashaEvent = data.events.find(e => {
                 const clean = e.replace(/[\u0591-\u05C7]/g, '');
                 return clean.includes("פרשת");
             });
-            if (parashaEvent) return parashaEvent.replace(/[\u0591-\u05C7\.]/g, ''); 
+            if (parashaEvent) parasha = parashaEvent.replace(/[\u0591-\u05C7\.]/g, ''); 
         }
-        return "";
+        return { parasha, heYear };
     } catch (e) {
-        return "";
+        return { parasha: "", heYear: "" };
     }
 }
 
@@ -26,7 +29,7 @@ export async function getWeeklyData(env, targetDate) {
     const { start, end } = getWeekRange(targetDate);
     const today = getCurrentIsraelTime().date;
     
-    const parasha = await getWeeklyParasha(start);
+    const { parasha, heYear } = await getWeeklyHebrewInfo(start);
     
     const { results: students } = await env.DB.prepare(
         "SELECT * FROM students ORDER BY class_name, last_name, first_name"
@@ -71,9 +74,11 @@ export async function getWeeklyData(env, targetDate) {
                 
                 if (badBehavior) {
                     behaviorMark = 'ב';
-                } else if (type === 'ok') {
-                    behaviorMark = 'א';
-                } // אם יש איחור או חיסור ללא הערה, המשתנה יישאר ריק
+                } else if (type === 'ok' || type === 'late') {
+                    behaviorMark = 'א'; // באיחור עדיין מקבלים א' בהתנהגות
+                } else if (type === 'absence') {
+                    behaviorMark = '';  // בחיסור המשבצת תישאר ריקה
+                }
 
                 weeklyStatus[i] = { 
                     type: type, 
@@ -99,7 +104,7 @@ export async function getWeeklyData(env, targetDate) {
         };
     });
 
-    return { weekStart: start, weekEnd: end, parasha, daysToShow, report };
+    return { weekStart: start, weekEnd: end, parasha, heYear, daysToShow, report };
 }
 
 export async function handleReports(request, env) {
