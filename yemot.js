@@ -96,7 +96,7 @@ export async function handleYemot(request, env) {
             ? `t-${hebDateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3`
             : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3`; 
             
-        return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,120,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,1230,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     // --- שלב 2: אם נבחר דיווח על יום אחר, נבקש תאריך ---
