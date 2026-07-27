@@ -98,14 +98,14 @@ export async function handleYemot(request, env) {
     if (!reportType) {
         const dateText = await getHebrewDateString(current.date);
         const welcomeMessage = dateText 
-            ? `t-${dateText}, לאיחור הקש 1, לחיסור 2, להתנהגות 3, לתאריך אחר 4, לשליחת המייל השבועי 0` 
+            ? `t-${dateText}, לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0` 
             : `t-לאיחור הקש 1, לחיסור 2, להתנהגות 3, לתאריך אחר 4, לשליחת המייל השבועי 0`;
             
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,12340,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '4' && !customDateInput) {
-        const datePrompt = "t-הקש את התאריך המבוקש. ליום אתמול הקש 1, לשלשום 2. לתאריך ספציפי בחודש הנוכחי או שעבר הקש 4 ספרות של יום וחודש.";
+        const datePrompt = "t-הקש את התאריך המבוקש, לאתמול הקישו 1 וסולמית, לשלשום הקישו 2 וסולמית, לתאריך ספציפי הקישו 4 ספרות של יום וחודש.";
         return new Response(`read=${datePrompt}=custom_date_input,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
