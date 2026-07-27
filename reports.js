@@ -1,10 +1,9 @@
 import { getCurrentIsraelTime, getWeekRange } from './utils.js';
 
-// פונקציה חדשה ששולפת את פרשת השבוע לפי התאריך של שבת
 async function getWeeklyParasha(weekStartDate) {
     try {
         const d = new Date(weekStartDate);
-        d.setDate(d.getDate() + 6); // מוסיף 6 ימים כדי להגיע ליום שבת
+        d.setDate(d.getDate() + 6); 
         const saturdayStr = d.toISOString().split('T')[0];
         
         const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${saturdayStr}&lg=h`);
@@ -15,7 +14,7 @@ async function getWeeklyParasha(weekStartDate) {
                 const clean = e.replace(/[\u0591-\u05C7]/g, '');
                 return clean.includes("פרשת");
             });
-            if (parashaEvent) return parashaEvent.replace(/[\u0591-\u05C7\.]/g, ''); // מסיר ניקוד ונקודות
+            if (parashaEvent) return parashaEvent.replace(/[\u0591-\u05C7\.]/g, ''); 
         }
         return "";
     } catch (e) {
@@ -27,7 +26,6 @@ export async function getWeeklyData(env, targetDate) {
     const { start, end } = getWeekRange(targetDate);
     const today = getCurrentIsraelTime().date;
     
-    // שליפת הפרשה לשבוע הנוכחי
     const parasha = await getWeeklyParasha(start);
     
     const { results: students } = await env.DB.prepare(
@@ -65,13 +63,21 @@ export async function getWeeklyData(env, targetDate) {
             const dateStr = currentDay.toISOString().split('T')[0];
             
             const exceptionToday = studentExceptions.find(e => e.date === dateStr);
+            
             if (exceptionToday) {
-                weeklyStatus[i] = { type: exceptionToday.type, minutes: exceptionToday.minutes };
+                weeklyStatus[i] = { 
+                    type: exceptionToday.type || 'ok', 
+                    minutes: exceptionToday.minutes,
+                    badBehavior: exceptionToday.bad_behavior === 1
+                };
             } else {
-                weeklyStatus[i] = { type: 'ok', minutes: null };
+                weeklyStatus[i] = { 
+                    type: 'ok', 
+                    minutes: null,
+                    badBehavior: false
+                };
             }
         }
-
         return {
             code: student.code,
             first_name: student.first_name,
@@ -81,7 +87,6 @@ export async function getWeeklyData(env, targetDate) {
         };
     });
 
-    // מחזיר עכשיו גם את הפרשה ל-Frontend
     return { weekStart: start, weekEnd: end, parasha, daysToShow, report };
 }
 
