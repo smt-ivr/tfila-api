@@ -1,34 +1,38 @@
 import { getCurrentIsraelTime, isSaturday } from './utils.js';
 
-// פונקציית עזר למשיכת התאריך העברי מ-Hebcal
+// פונקציית עזר למשיכת התאריך העברי מ-Hebcal (יום ופרשה בלבד, כולל התמודדות עם ניקוד)
 async function getHebrewDateString(dateString) {
     try {
-        // הפרמטר lg=h מבטיח שהאירועים יחזרו בעברית (למשל "פרשת עקב")
         const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateString}&lg=h`);
         const data = await response.json();
         
-        const year = data.heDateParts ? data.heDateParts.y : "";
-        
-        // שליפת פרשת השבוע מתוך מערך האירועים
         let parasha = "";
         if (data.events && data.events.length > 0) {
-            const parashaEvent = data.events.find(e => e.includes("פרשת"));
-            if (parashaEvent) parasha = parashaEvent;
+            // חיפוש הפרשה תוך כדי הסרת הניקוד כדי שההשוואה תעבוד כראוי
+            const parashaEvent = data.events.find(e => {
+                const cleanEvent = e.replace(/[\u0591-\u05C7]/g, ''); // מסיר את כל סימני הניקוד
+                return cleanEvent.includes("פרשת");
+            });
+            
+            if (parashaEvent) {
+                // מסירים את הניקוד גם מהתוצאה הסופית כדי שימות המשיח יקריא את זה חלק
+                parasha = parashaEvent.replace(/[\u0591-\u05C7]/g, '');
+            }
         }
         
         // המרת היום בשבוע לעברית
         const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
         const dayName = days[new Date(dateString).getDay()];
 
-        // הרכבת המחרוזת הסופית
+        // הרכבת המחרוזת הסופית (ללא השנה)
         if (parasha) {
-            return `יום ${dayName} ${parasha} ${year}`;
+            return `יום ${dayName} ${parasha}`;
         } else {
-            return `יום ${dayName} ${year}`;
+            return `יום ${dayName}`;
         }
     } catch (error) {
         console.error("Hebcal API error:", error);
-        return ""; // קריסה שקטה: אם ה-API נופל, המערכת תמשיך לעבוד בלי התאריך
+        return ""; // קריסה שקטה: המערכת תמשיך לעבוד גם בלי התאריך במקרה של שגיאה
     }
 }
 
