@@ -86,7 +86,7 @@ export async function handleYemot(request, env) {
         const welcomeMessage = dateText 
             ? `t-${dateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`
             : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`; 
-        return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,120,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,1230,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '3' && !customDateInput) {
