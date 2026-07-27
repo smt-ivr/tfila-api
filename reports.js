@@ -2,23 +2,41 @@ import { getCurrentIsraelTime, getWeekRange } from './utils.js';
 
 export async function getWeeklyData(env, targetDate) {
     const { start, end } = getWeekRange(targetDate);
+    const today = getCurrentIsraelTime().date;
     
-    // שליפת כל התלמידים
+    // שליפת תלמידים וחריגים
     const { results: students } = await env.DB.prepare(
-        "SELECT * FROM students ORDER BY class_name, first_name"
+        "SELECT * FROM students ORDER BY class_name, last_name, first_name"
     ).all();
     
-    // שליפת כל החריגים בטווח השבוע
     const { results: exceptions } = await env.DB.prepare(
         "SELECT * FROM exceptions WHERE date >= ? AND date <= ?"
     ).bind(start, end).all();
 
-    // בניית מבנה נתונים שבועי לכל תלמיד
+    // בניית מערך של הימים שצריך להציג (רק עד היום הנוכחי)
+    const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
+    const daysToShow = [];
+    
+    for (let i = 0; i <= 5; i++) {
+        const currentDay = new Date(start);
+        currentDay.setDate(currentDay.getDate() + i);
+        const dateStr = currentDay.toISOString().split('T')[0];
+        
+        // מוסיף את היום לדוח רק אם הוא היום או תאריך שעבר
+        if (dateStr <= today) {
+            daysToShow.push({ index: i, name: dayNames[i], dateStr });
+        }
+    }
+    
+    // הגנת נפילה: אם מבקשים בטעות שבוע עתידי לגמרי, נציג את כל הימים כדי לא להחזיר דוח ריק
+    if (daysToShow.length === 0) {
+        for (let i = 0; i <= 5; i++) daysToShow.push({ index: i, name: dayNames[i] });
+    }
+
     const report = students.map(student => {
         const studentExceptions = exceptions.filter(e => e.student_code === student.code);
         const weeklyStatus = {};
         
-        // מעבר על ימים 0 (ראשון) עד 5 (שישי)
         for (let i = 0; i <= 5; i++) {
             const currentDay = new Date(start);
             currentDay.setDate(currentDay.getDate() + i);
@@ -28,23 +46,25 @@ export async function getWeeklyData(env, targetDate) {
             if (exceptionToday) {
                 weeklyStatus[i] = { type: exceptionToday.type, minutes: exceptionToday.minutes };
             } else {
-                weeklyStatus[i] = { type: 'ok', minutes: null }; // נוכח
+                weeklyStatus[i] = { type: 'ok', minutes: null };
             }
         }
 
         return {
-            ...student,
+            code: student.code,
+            first_name: student.first_name,
+            last_name: student.last_name,
+            class_name: student.class_name,
             weeklyStatus
         };
     });
 
-    return { weekStart: start, weekEnd: end, report };
+    return { weekStart: start, weekEnd: end, daysToShow, report };
 }
 
 export async function handleReports(request, env) {
     const url = new URL(request.url);
     const dateParam = url.searchParams.get('date') || getCurrentIsraelTime().date;
-    
     const data = await getWeeklyData(env, dateParam);
     return data;
 }
