@@ -1,10 +1,29 @@
 import { getCurrentIsraelTime, isSaturday } from './utils.js';
 import { handleSendEmail } from './email.js';
 
-function getDayString(dateString) {
-    const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
-    const dayName = days[new Date(dateString).getDay()];
-    return `יום ${dayName}`;
+// הפונקציה שחזרה למקומה: מביאה תאריך עברי ופרשה
+async function getHebrewDateString(dateString) {
+    try {
+        const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateString}&lg=h`);
+        const data = await response.json();
+        let parasha = "";
+        
+        if (data.events && data.events.length > 0) {
+            const parashaEvent = data.events.find(e => {
+                const cleanEvent = e.replace(/[\u0591-\u05C7]/g, ''); 
+                return cleanEvent.includes("פרשת");
+            });
+            if (parashaEvent) parasha = parashaEvent.replace(/[\u0591-\u05C7]/g, '');
+        }
+        
+        const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+        const dayName = days[new Date(dateString).getDay()];
+        
+        let resText = parasha ? `יום ${dayName} ${parasha}` : `יום ${dayName}`;
+        return resText.replace(/\./g, ''); 
+    } catch (error) {
+        return ""; 
+    }
 }
 
 function calculateCustomDate(currentDateStr, customInput) {
@@ -36,7 +55,6 @@ export async function handleYemot(request, env) {
     
     const current = getCurrentIsraelTime();
     
-    // --- שלב 0: שליחת אימייל ---
     if (reportType === '0') {
         const email = url.searchParams.get('email');
         if (!email) {
@@ -64,8 +82,10 @@ export async function handleYemot(request, env) {
     const actualType = (reportType === '3') ? finalReportType : reportType;
 
     if (!reportType) {
-        const dateText = getDayString(current.date);
-        const welcomeMessage = `t-${dateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`; 
+        const dateText = await getHebrewDateString(current.date);
+        const welcomeMessage = dateText 
+            ? `t-${dateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`
+            : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`; 
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,120,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
@@ -75,8 +95,10 @@ export async function handleYemot(request, env) {
     }
 
     if (reportType === '3' && customDateInput && !finalReportType) {
-        const dateText = getDayString(effectiveDate);
-        const prompt = `t-${dateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2`;
+        const dateText = await getHebrewDateString(effectiveDate);
+        const prompt = dateText 
+            ? `t-${dateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2`
+            : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2`;
         return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,120,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
@@ -86,7 +108,6 @@ export async function handleYemot(request, env) {
         else return new Response("id_list_message=t-בחירה שגויה השלוחה תתנתק&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    // הלוגיקה והזנת הנתונים עטופים נכון בתוך הפונקציה המרכזית
     try {
         let studentCode = inputData;
         let minutes = null;
@@ -104,7 +125,6 @@ export async function handleYemot(request, env) {
 
         const typeDb = actualType === '2' ? 'absence' : 'late';
 
-        // מחיקה אוטומטית כאשר האיחור הוא 0 דקות
         if (actualType === '1' && minutes === 0) {
             await env.DB.prepare("DELETE FROM exceptions WHERE student_code = ? AND date = ?").bind(studentCode, effectiveDate).run();
             return new Response(`id_list_message=t-עודכן בהצלחה לתלמיד ${student.first_name} ${student.last_name} הגעה בזמן&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
