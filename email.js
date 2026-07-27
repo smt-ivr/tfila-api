@@ -21,9 +21,9 @@ export async function handleSendEmail(request, env) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            from: 'מערכת חריגים <tfila@smti.uk>',
+            from: 'מערכת דיווחים <tfila@smti.uk>',
             to: email,
-            subject: `דוח נוכחות שבועי (${data.weekStart} עד ${data.weekEnd})`,
+            subject: `דוח מצב שבועי מפורט (${data.weekStart} עד ${data.weekEnd})`,
             html: htmlContent
         })
     });
@@ -37,42 +37,68 @@ export async function handleSendEmail(request, env) {
 
 function buildEmailHTML(data) {
     let rows = '';
-    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
     
+    // יצירת הכותרות של הימים (רק הימים שרלוונטיים להיום)
+    const dayHeaders = data.daysToShow.map(d => 
+        `<th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151;">${d.name}</th>`
+    ).join('');
+
     data.report.forEach(student => {
         let cells = '';
-        for (let i = 0; i <= 5; i++) {
-            const status = student.weeklyStatus[i];
-            if (status.type === 'ok') cells += `<td style="color: green;">✓</td>`;
-            else if (status.type === 'absence') cells += `<td style="color: red;">חיסור</td>`;
-            else if (status.type === 'late') cells += `<td style="color: orange;">איחור (${status.minutes} דק')</td>`;
-        }
+        
+        // מילוי הסטטוס לכל יום רלוונטי
+        data.daysToShow.forEach(day => {
+            const status = student.weeklyStatus[day.index];
+            if (status.type === 'ok') {
+                cells += `<td style="color: #059669; font-weight: bold; font-size: 16px;">V</td>`;
+            } else if (status.type === 'absence') {
+                cells += `<td style="color: #DC2626; font-weight: bold; font-size: 20px;">-</td>`;
+            } else if (status.type === 'late') {
+                cells += `<td style="color: #D97706; font-weight: 500;">${status.minutes} דקות איחור</td>`;
+            }
+        });
         
         rows += `
             <tr>
-                <td style="border: 1px solid #ddd; padding: 8px;">${student.code}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${student.first_name} ${student.last_name}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${student.class_name || ''}</td>
-                ${cells.replace(/<td/g, '<td style="border: 1px solid #ddd; padding: 8px; text-align: center;"')}
+                <td style="border: 1px solid #E5E7EB; padding: 12px; font-weight: 600; color: #111827;">${student.first_name}</td>
+                <td style="border: 1px solid #E5E7EB; padding: 12px; font-weight: 600; color: #111827;">${student.last_name}</td>
+                <td style="border: 1px solid #E5E7EB; padding: 12px; color: #4B5563;">${student.class_name || ''}</td>
+                ${cells.replace(/<td/g, '<td style="border: 1px solid #E5E7EB; padding: 12px; text-align: center;"')}
             </tr>
         `;
     });
 
     return `
         <html dir="rtl">
-        <head><style>table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }</style></head>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; background-color: #F9FAFB; padding: 20px; }
+                .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; padding: 30px; border: 1px solid #E5E7EB; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+                h2 { color: #1F2937; margin-bottom: 5px; text-align: center; font-size: 24px; }
+                p.dates { text-align: center; color: #6B7280; margin-bottom: 25px; font-size: 15px; }
+                table { border-collapse: collapse; width: 100%; border: 1px solid #D1D5DB; }
+                th { text-align: right; font-size: 14px; }
+                td { font-size: 14px; }
+            </style>
+        </head>
         <body>
-            <h2>דוח נוכחות שבועי</h2>
-            <p>תאריכים: ${data.weekStart} עד ${data.weekEnd}</p>
-            <table>
-                <tr style="background-color: #f2f2f2;">
-                    <th style="border: 1px solid #ddd; padding: 8px;">קוד</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">שם</th>
-                    <th style="border: 1px solid #ddd; padding: 8px;">כיתה</th>
-                    ${days.map(d => `<th style="border: 1px solid #ddd; padding: 8px;">${d}</th>`).join('')}
-                </tr>
-                ${rows}
-            </table>
+            <div class="container">
+                <h2>דוח מצב שבועי</h2>
+                <p class="dates">מתאריך ${data.weekStart} עד ${data.weekEnd}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151;">שם</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151;">משפחה</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151;">כיתה</th>
+                            ${dayHeaders}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
         </body>
         </html>
     `;
