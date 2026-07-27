@@ -6,7 +6,7 @@ export async function handleSendEmail(request, env) {
     const email = url.searchParams.get('email');
     
     if (!email) {
-        throw new Error("לא סופקה כתובת אימייל לשליחה");
+        throw new Error("Missing email parameter");
     }
 
     const current = getCurrentIsraelTime();
@@ -21,18 +21,18 @@ export async function handleSendEmail(request, env) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            from: 'מערכת דיווחים <tfila@smti.uk>',
+            from: 'מערכת נוכחות <tfila@smti.uk>',
             to: email,
-            subject: `דוח מצב שבועי מפורט (${data.weekStart} עד ${data.weekEnd})`,
+            subject: `דוח נוכחות שבועי (${data.weekStart} עד ${data.weekEnd})`,
             html: htmlContent
         })
     });
 
     if (!res.ok) {
-        throw new Error("שגיאה בשליחת המייל דרך שרת הדואר");
+        throw new Error("Failed to send email");
     }
 
-    return { message: "הדוח נשלח בהצלחה למייל: " + email };
+    return { message: "Email sent successfully to: " + email };
 }
 
 function buildEmailHTML(data) {
@@ -47,12 +47,14 @@ function buildEmailHTML(data) {
         
         data.daysToShow.forEach(day => {
             const status = student.weeklyStatus[day.index];
+            const behaviorFlag = status.badBehavior ? '<br><span style="color:#B91C1C; font-size:11px;">(הערה)</span>' : '';
+            
             if (status.type === 'ok') {
-                cells += `<td style="color: #059669; font-weight: bold; font-size: 16px;">V</td>`;
+                cells += `<td style="color: #059669; font-weight: bold; font-size: 16px;">V${behaviorFlag}</td>`;
             } else if (status.type === 'absence') {
-                cells += `<td style="color: #DC2626; font-weight: bold; font-size: 20px;">-</td>`;
+                cells += `<td style="color: #DC2626; font-weight: bold; font-size: 20px;">-${behaviorFlag}</td>`;
             } else if (status.type === 'late') {
-                cells += `<td style="color: #D97706; font-weight: 500;">${status.minutes} דקות איחור</td>`;
+                cells += `<td style="color: #D97706; font-weight: 500;">${status.minutes} דק'${behaviorFlag}</td>`;
             }
         });
         
@@ -82,12 +84,12 @@ function buildEmailHTML(data) {
         </head>
         <body dir="rtl" style="direction: rtl; text-align: right;">
             <div class="container" dir="rtl" style="direction: rtl;">
-                <h2>דוח מצב שבועי</h2>
+                <h2>דוח נוכחות - ${data.parasha}</h2>
                 <p class="dates">מתאריך ${data.weekStart} עד ${data.weekEnd}</p>
                 <table dir="rtl" style="direction: rtl; width: 100%;">
                     <thead>
                         <tr>
-                            <th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151; text-align: right;">שם</th>
+                            <th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151; text-align: right;">שם פרטי</th>
                             <th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151; text-align: right;">משפחה</th>
                             <th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151; text-align: right;">כיתה</th>
                             ${dayHeaders}
