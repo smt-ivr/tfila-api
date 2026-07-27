@@ -2,6 +2,7 @@ import { handleExceptions } from './exceptions.js';
 import { handleReports } from './reports.js';
 import { handleStudents } from './students.js';
 import { handleYemot } from './yemot.js';
+import { handleSendEmail } from './email.js';
 import { getCurrentIsraelTime } from './utils.js';
 
 const corsHeaders = {
@@ -27,15 +28,15 @@ export default {
         const path = url.pathname;
 
         try {
-            if (path.endsWith('/yemot')) {
-                return await handleYemot(request, env);
+            if (path.endsWith('/yemot')) return await handleYemot(request, env);
+            if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
+            
+            // נתיב לשליחת אימייל מהאתר
+            if (path.endsWith('/send-email') && request.method === 'POST') {
+                const result = await handleSendEmail(request, env);
+                return jsonResponse(result);
             }
 
-            if (path.endsWith('/system-time') && request.method === 'GET') {
-                return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
-            }
-
-            // נתיב הדיווח החדש מהווב
             if (path.endsWith('/exception') && request.method === 'POST') {
                 const result = await handleExceptions(request, env);
                 return jsonResponse(result);
@@ -53,21 +54,16 @@ export default {
             
             if (path.endsWith('/add-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
-                
                 const existingStudent = await env.DB.prepare("SELECT code FROM students WHERE code = ?").bind(code).first();
                 if (existingStudent) return jsonResponse({ error: "קוד תלמיד כבר קיים." }, 400);
                 
-                await env.DB.prepare(
-                    "INSERT INTO students (code, first_name, last_name, class_name) VALUES (?, ?, ?, ?)"
-                ).bind(code, first_name, last_name, class_name).run();
+                await env.DB.prepare("INSERT INTO students (code, first_name, last_name, class_name) VALUES (?, ?, ?, ?)").bind(code, first_name, last_name, class_name).run();
                 return jsonResponse({ message: "התלמיד נוסף בהצלחה" });
             }
 
             if (path.endsWith('/update-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
-                await env.DB.prepare(
-                    "UPDATE students SET first_name = ?, last_name = ?, class_name = ? WHERE code = ?"
-                ).bind(first_name, last_name, class_name, code).run();
+                await env.DB.prepare("UPDATE students SET first_name = ?, last_name = ?, class_name = ? WHERE code = ?").bind(first_name, last_name, class_name, code).run();
                 return jsonResponse({ message: "פרטי התלמיד עודכנו" });
             }
 
