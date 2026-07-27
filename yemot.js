@@ -15,10 +15,10 @@ async function getHebrewDateString(dateString) {
             if (parashaEvent) parasha = parashaEvent.replace(/[\u0591-\u05C7]/g, '');
         }
         
-        const days = [" ", " ", " ", " ", " ", " ", " "];
+        const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
         const dayName = days[new Date(dateString).getDay()];
         
-        let resText = parasha ? `  ${dayName} ${parasha}` : `  ${dayName}`;
+        let resText = parasha ? `יום ${dayName} ${parasha}` : `יום ${dayName}`;
         return resText.replace(/\./g, ''); 
     } catch (error) {
         return ""; 
@@ -56,13 +56,13 @@ export async function handleYemot(request, env) {
     if (reportType === '0') {
         const email = url.searchParams.get('email');
         if (!email) {
-            return new Response("id_list_message=t- &", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            return new Response("id_list_message=t-שגיאה בשליחת אימייל&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
         try {
             await handleSendEmail(request, env);
-            return new Response("id_list_message=t- &", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            return new Response("id_list_message=t-האימייל נשלח בהצלחה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         } catch (e) {
-            return new Response("id_list_message=t- &", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            return new Response("id_list_message=t-שגיאה בשליחת אימייל&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
     }
 
@@ -70,11 +70,11 @@ export async function handleYemot(request, env) {
     if (reportType === '3' && customDateInput) {
         const calcDate = calculateCustomDate(current.date, customDateInput);
         if (calcDate) effectiveDate = calcDate;
-        else return new Response("id_list_message=t- &", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        else return new Response("id_list_message=t-תאריך שגוי&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
     
     if (isSaturday(effectiveDate)) {
-        return new Response("id_list_message=t- &", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response("id_list_message=t-לא ניתן לדווח בשבת&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     const actualType = (reportType === '3') ? finalReportType : reportType;
@@ -82,21 +82,21 @@ export async function handleYemot(request, env) {
     if (!reportType) {
         const dateText = await getHebrewDateString(current.date);
         const welcomeMessage = dateText 
-            ? `t-${dateText},   1,   2,   3, `
-            : `t-  1,   2,   3,   0`;
+            ? `t-${dateText},t-לאיחור הקש 1,t-לחיסור הקש 2,t-לתאריך אחר הקש 3`
+            : `t-לאיחור הקש 1,t-לחיסור הקש 2,t-לתאריך אחר הקש 3,t-לשליחת אימייל הקש 0`;
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,1230,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '3' && !customDateInput) {
-        const datePrompt = "t- ";
+        const datePrompt = "t-אנא הקש תאריך";
         return new Response(`read=${datePrompt}=custom_date_input,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '3' && customDateInput && !finalReportType) {
         const dateText = await getHebrewDateString(effectiveDate);
         const prompt = dateText 
-            ? `t-${dateText},   1, `
-            : `t-  1,   2`;
+            ? `t-${dateText},t-לאיחור הקש 1,t-לחיסור הקש 2`
+            : `t-לאיחור הקש 1,t-לחיסור הקש 2`;
         return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,120,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
@@ -119,16 +119,15 @@ export async function handleYemot(request, env) {
             }
         }
     } else {
-        // שמירת התנהגות רגילה לסוגי דוחות אחרים אם יהיו בעתיד
         inputData = url.searchParams.get('input_data');
     }
 
     let nextIndex = lastIndex + 1;
 
     if (!inputData) {
-        if (actualType === '2') return new Response(`read=t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-        else if (actualType === '1') return new Response(`read=t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-        else return new Response("id_list_message=t- &", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        if (actualType === '2') return new Response(`read=t-הקש קוד תלמיד=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        else if (actualType === '1') return new Response(`read=t-הקש קוד תלמיד כוכבית ומספר דקות=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        else return new Response("id_list_message=t-שגיאה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     // יציאה וחזרה לתיקייה הקודמת במקרה של הקשת כוכבית בלבד
@@ -142,21 +141,21 @@ export async function handleYemot(request, env) {
 
         if (actualType === '1') { 
             const parts = inputData.split('*');
-            if (parts.length < 2) return new Response(`read=t- ,t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            if (parts.length < 2) return new Response(`read=t-הקשה שגויה,t-נסה שוב=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
             studentCode = parts[0];
             minutes = parseInt(parts[1], 10);
-            if (isNaN(minutes)) return new Response(`read=t- ,t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            if (isNaN(minutes)) return new Response(`read=t-הקשה שגויה,t-נסה שוב=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
 
         const student = await env.DB.prepare("SELECT * FROM students WHERE code = ?").bind(studentCode).first();
-        if (!student) return new Response(`read=t- ,t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        if (!student) return new Response(`read=t-תלמיד לא נמצא,t-נסה שוב=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 
         const typeDb = actualType === '2' ? 'absence' : 'late';
 
         if (actualType === '1' && minutes === 0) {
             await env.DB.prepare("DELETE FROM exceptions WHERE student_code = ? AND date = ?").bind(studentCode, effectiveDate).run();
             // מבקש נתון נוסף אחרי מחיקה מוצלחת
-            return new Response(`read=t-  ${student.first_name} ${student.last_name}  ,t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            return new Response(`read=t-נמחק,t-הקש נתון נוסף=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
 
         const existingRecord = await env.DB.prepare("SELECT id FROM exceptions WHERE student_code = ? AND date = ?").bind(studentCode, effectiveDate).first();
@@ -168,13 +167,13 @@ export async function handleYemot(request, env) {
             DO UPDATE SET type = excluded.type, minutes = excluded.minutes
         `).bind(studentCode, effectiveDate, typeDb, minutes).run();
 
-        const actionVerb = existingRecord ? " " : " ";
-        let successMessage = typeDb === 'absence' ? `t-${actionVerb}   ${student.first_name} ${student.last_name}  ` : `t-${actionVerb}   ${student.first_name} ${student.last_name}   ${minutes} `;
+        const actionVerb = existingRecord ? "עודכן" : "נרשם";
+        let successMessage = typeDb === 'absence' ? `t-${actionVerb} חיסור לתלמיד ${student.first_name} ${student.last_name}` : `t-${actionVerb} איחור לתלמיד ${student.first_name} ${student.last_name} של ${minutes} דקות`;
 
         // השמעת הודעת הצלחה וקריאה מידית לקלט נוסף בפרמטר הבא בתור
-        return new Response(`read=${successMessage},t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response(`read=${successMessage},t-הקש נתון נוסף=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         
     } catch (error) {
-        return new Response(`read=t- ,t- =${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response(`read=t-שגיאת מערכת,t-נסה שוב=${paramPrefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 }
