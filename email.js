@@ -1,7 +1,43 @@
+import { getWeeklyData } from './reports.js';
+import { getCurrentIsraelTime } from './utils.js';
+
+export async function handleSendEmail(request, env) {
+    const url = new URL(request.url);
+    const email = url.searchParams.get('email');
+    
+    if (!email) {
+        throw new Error("לא סופקה כתובת אימייל לשליחה");
+    }
+
+    const current = getCurrentIsraelTime();
+    const data = await getWeeklyData(env, current.date);
+    
+    const htmlContent = buildEmailHTML(data);
+
+    const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            from: 'מערכת דיווחים <admin@smti.uk>',
+            to: email,
+            subject: `דוח מצב שבועי מפורט (${data.weekStart} עד ${data.weekEnd})`,
+            html: htmlContent
+        })
+    });
+
+    if (!res.ok) {
+        throw new Error("שגיאה בשליחת המייל דרך שרת הדואר");
+    }
+
+    return { message: "הדוח נשלח בהצלחה למייל: " + email };
+}
+
 function buildEmailHTML(data) {
     let rows = '';
     
-    // יצירת הכותרות של הימים
     const dayHeaders = data.daysToShow.map(d => 
         `<th style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151; text-align: right;">${d.name}</th>`
     ).join('');
