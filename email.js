@@ -3,20 +3,28 @@ import { getCurrentIsraelTime } from './utils.js';
 
 export async function handleSendEmail(request, env) {
     const url = new URL(request.url);
-    const email = url.searchParams.get('email');
+    const emailParam = url.searchParams.get('email');
     
-    if (!email) {
+    if (!emailParam) {
         throw new Error("Missing email parameter");
+    }
+
+    // תמיכה במספר מיילים המופרדים בפסיקים, ניקוי רווחים, והפיכה למערך
+    const emailsArray = emailParam.split(',').map(e => e.trim()).filter(e => e.length > 0);
+    
+    if (emailsArray.length === 0) {
+        throw new Error("No valid email addresses provided");
     }
 
     const current = getCurrentIsraelTime();
     const data = await getWeeklyData(env, current.date);
     
-    const htmlContent = buildEmailHTML(data);
+    // מעבירים לפונקציה את התאריך הנוכחי כדי להדגיש אותו בטבלה
+    const htmlContent = buildEmailHTML(data, current.date);
 
     const parashaText = data.parasha ? ` - ${data.parasha}` : '';
     const yearText = data.heYear ? ` ${data.heYear}` : '';
-    const subjectLine = `דוח נוכחות שבועי${parashaText}${yearText}`;
+    const subjectLine = `דוח נוכחות יומי${parashaText}${yearText}`;
 
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -26,7 +34,7 @@ export async function handleSendEmail(request, env) {
         },
         body: JSON.stringify({
             from: 'מערכת נוכחות <tfila@smti.uk>',
-            to: email,
+            to: emailsArray, // שירות Resend תומך בקבלת מערך של כתובות
             subject: subjectLine,
             html: htmlContent
         })
@@ -36,25 +44,39 @@ export async function handleSendEmail(request, env) {
         throw new Error("Failed to send email");
     }
 
-    return { message: "Email sent successfully to: " + email };
+    return { message: "Email sent successfully to: " + emailsArray.join(', ') };
 }
 
-function buildEmailHTML(data) {
+function buildEmailHTML(data, currentDateStr) {
     let rows = '';
     
-    const dayHeaders = data.daysToShow.map(d => 
-        `<th colspan="2" style="border: 1px solid #D1D5DB; padding: 12px; background-color: #F3F4F6; color: #374151; text-align: center;">${d.name}</th>`
-    ).join('');
+    // עיצוב כותרות עליונות (ימים) עם הדגשת היום הנוכחי
+    const dayHeaders = data.daysToShow.map(d => {
+        const isToday = d.dateStr === currentDateStr;
+        const bgColor = isToday ? '#FEF08A' : '#F3F4F6'; // צהוב עדין ליום הנוכחי
+        const todayMarker = isToday ? ' <br><span style="font-size:12px; color:#B45309;">(היום)</span>' : '';
+        
+        return `<th colspan="2" style="border: 1px solid #D1D5DB; padding: 12px; background-color: ${bgColor}; color: #374151; text-align: center; vertical-align: middle;">
+            ${d.name}${todayMarker}
+        </th>`;
+    }).join('');
 
-    const subHeaders = data.daysToShow.map(() => 
-        `<th style="border: 1px solid #D1D5DB; padding: 6px; background-color: #F9FAFB; color: #4B5563; text-align: center; font-size: 13px; font-weight: normal;">זמן</th>
-         <th style="border: 1px solid #D1D5DB; padding: 6px; background-color: #F9FAFB; color: #4B5563; text-align: center; font-size: 13px; font-weight: normal;">התנהגות</th>`
-    ).join('');
+    // עיצוב תתי כותרות (זמן | התנהגות)
+    const subHeaders = data.daysToShow.map(d => {
+        const isToday = d.dateStr === currentDateStr;
+        const bgColor = isToday ? '#FEF9C3' : '#F9FAFB';
+        
+        return `<th style="border: 1px solid #D1D5DB; padding: 6px; background-color: ${bgColor}; color: #4B5563; text-align: center; font-size: 13px; font-weight: normal;">זמן</th>
+                <th style="border: 1px solid #D1D5DB; padding: 6px; background-color: ${bgColor}; color: #4B5563; text-align: center; font-size: 13px; font-weight: normal;">התנהגות</th>`;
+    }).join('');
 
+    // עיצוב שורות התלמידים
     data.report.forEach(student => {
         let cells = '';
         
         data.daysToShow.forEach(day => {
+            const isToday = day.dateStr === currentDateStr;
+            const cellBg = isToday ? '#FEF9C3' : '#FFFFFF';
             const status = student.weeklyStatus[day.index];
             let timeContent = '';
             
@@ -67,8 +89,8 @@ function buildEmailHTML(data) {
             }
 
             cells += `
-                <td style="border: 1px solid #E5E7EB; padding: 10px; text-align: center; min-width: 60px;">${timeContent}</td>
-                <td style="border: 1px solid #E5E7EB; padding: 10px; text-align: center; font-weight: bold; min-width: 60px;">${status.behaviorMark}</td>
+                <td style="border: 1px solid #E5E7EB; padding: 10px; text-align: center; min-width: 60px; background-color: ${cellBg};">${timeContent}</td>
+                <td style="border: 1px solid #E5E7EB; padding: 10px; text-align: center; font-weight: bold; min-width: 60px; background-color: ${cellBg};">${status.behaviorMark}</td>
             `;
         });
         
@@ -84,7 +106,7 @@ function buildEmailHTML(data) {
 
     const parashaText = data.parasha ? ` - ${data.parasha}` : '';
     const yearText = data.heYear ? ` ${data.heYear}` : '';
-    const titleLine = `דוח נוכחות${parashaText}${yearText}`;
+    const titleLine = `דוח נוכחות יומי${parashaText}${yearText}`;
 
     return `
         <!DOCTYPE html>
