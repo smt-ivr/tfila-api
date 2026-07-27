@@ -51,8 +51,8 @@ export async function handleYemot(request, env) {
     
     const current = getCurrentIsraelTime();
     
-    // --- שלב 0: שליחת אימייל (אם נבחרה שלוחה 4) ---
-    if (reportType === '4') {
+    // --- שלב 0: שליחת אימייל (אם נבחרה שלוחה 0) ---
+    if (reportType === '0') {
         const email = url.searchParams.get('email');
         if (!email) {
             return new Response("id_list_message=t-אין אימייל לשליחה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
@@ -81,8 +81,8 @@ export async function handleYemot(request, env) {
     if (!reportType) {
         const hebDateText = await getHebrewDateString(current.date);
         const welcomeMessage = hebDateText 
-            ? `t-${hebDateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 4`
-            : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 4`; 
+            ? `t-${hebDateText}, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`
+            : `t-לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2, לדיווח על יום אחר הקישו 3, לשליחת דוח למייל הקישו 0`; 
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,120,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
