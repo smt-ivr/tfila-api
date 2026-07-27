@@ -1,9 +1,41 @@
 import { getCurrentIsraelTime, isSaturday } from './utils.js';
 
+// פונקציית עזר למשיכת התאריך העברי מ-Hebcal
+async function getHebrewDateString(dateString) {
+    try {
+        // הפרמטר lg=h מבטיח שהאירועים יחזרו בעברית (למשל "פרשת עקב")
+        const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateString}&lg=h`);
+        const data = await response.json();
+        
+        const year = data.heDateParts ? data.heDateParts.y : "";
+        
+        // שליפת פרשת השבוע מתוך מערך האירועים
+        let parasha = "";
+        if (data.events && data.events.length > 0) {
+            const parashaEvent = data.events.find(e => e.includes("פרשת"));
+            if (parashaEvent) parasha = parashaEvent;
+        }
+        
+        // המרת היום בשבוע לעברית
+        const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+        const dayName = days[new Date(dateString).getDay()];
+
+        // הרכבת המחרוזת הסופית
+        if (parasha) {
+            return `יום ${dayName} ${parasha} ${year}`;
+        } else {
+            return `יום ${dayName} ${year}`;
+        }
+    } catch (error) {
+        console.error("Hebcal API error:", error);
+        return ""; // קריסה שקטה: אם ה-API נופל, המערכת תמשיך לעבוד בלי התאריך
+    }
+}
+
 export async function handleYemot(request, env) {
     const url = new URL(request.url);
     
-    const reportType = url.searchParams.get('report_type'); // 1 = חיסור, 2 = איחור
+    const reportType = url.searchParams.get('report_type'); // 1 = איחור, 2 = חיסור
     const inputData = url.searchParams.get('input_data'); // קוד תלמיד (או קוד*דקות)
     
     const current = getCurrentIsraelTime();
@@ -16,24 +48,27 @@ export async function handleYemot(request, env) {
 
     // שלב 1: בחירת סוג דיווח
     if (!reportType) {
-        const [year, month, day] = current.date.split('-');
-        const dateString = `${day} לחודש ${month}`;
+        // משיכת התאריך המלא מה-API
+        const hebDateText = await getHebrewDateString(current.date);
         
-        const welcomeMessage = `t-שלום, התאריך היום הוא ${dateString}, לדיווח חיסור הקישו 1, לדיווח איחור הקישו 2`;
-        return new Response(`read=${welcomeMessage}=report_type,,,,,NO,,,,,,,,,no`, {
+        const welcomeMessage = hebDateText 
+            ? `t-שלום, התאריך היום ${hebDateText} לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2`
+            : `t-שלום, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2`; // פולבק במקרה של שגיאת רשת
+            
+        return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,120,,,,,no`, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
     }
 
-    // שלב 2: בקשת קוד תלמיד (ודקות אם צריך)
+    // שלב 2: בקשת קוד תלמיד (ודקות אם מדובר באיחור)
     if (!inputData) {
         let promptMessage = "";
-        if (reportType === '1') {
+        if (reportType === '2') { // חיסור
             promptMessage = "t-הקש את קוד התלמיד ולסיום סולמית";
-        } else if (reportType === '2') {
+        } else if (reportType === '1') { // איחור
             promptMessage = "t-הקש את קוד התלמיד, כוכבית, ואת דקות האיחור ולסיום סולמית";
         } else {
-            return new Response("read=t-בחירה שגויה, לדיווח חיסור הקישו 1, לדיווח איחור הקישו 2=report_type,,,,,NO,,,,,,,,,no", {
+            return new Response("read=t-בחירה שגויה, לדיווח איחור הקישו 1, לדיווח חיסור הקישו 2=report_type,,1,,,NO,,,,120,,,,,no", {
                 headers: { 'Content-Type': 'text/plain; charset=utf-8' }
             });
         }
@@ -48,8 +83,7 @@ export async function handleYemot(request, env) {
         let studentCode = inputData;
         let minutes = null;
 
-        if (reportType === '2') {
-            // הפרדת קוד התלמיד והדקות באמצעות הכוכבית
+        if (reportType === '1') { // איחור
             const parts = inputData.split('*');
             if (parts.length < 2) {
                  return new Response("read=t-הקלט שגוי. הקש קוד תלמיד, כוכבית, דקות איחור ולסיום סולמית=input_data,,,,,NO,,,,,,,,,no", {
@@ -68,7 +102,7 @@ export async function handleYemot(request, env) {
             });
         }
 
-        const typeDb = reportType === '1' ? 'absence' : 'late';
+        const typeDb = reportType === '2' ? 'absence' : 'late';
 
         // הוספה או עדכון דריסה של דיווח קודם באותו יום
         await env.DB.prepare(`
@@ -78,7 +112,7 @@ export async function handleYemot(request, env) {
             DO UPDATE SET type = excluded.type, minutes = excluded.minutes
         `).bind(studentCode, current.date, typeDb, minutes).run();
 
-        const successMessage = reportType === '1' ? "t-החיסור דווח בהצלחה" : "t-האיחור דווח בהצלחה";
+        const successMessage = reportType === '2' ? "t-החיסור דווח בהצלחה" : "t-האיחור דווח בהצלחה";
         return new Response(`id_list_message=${successMessage}&`, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });
