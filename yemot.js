@@ -99,21 +99,21 @@ export async function handleYemot(request, env) {
         const dateText = await getHebrewDateString(current.date);
         const welcomeMessage = dateText 
             ? `t-${dateText}, לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0` 
-            : `t-לאיחור הקש 1, לחיסור 2, להתנהגות 3, לתאריך אחר 4, לשליחת המייל השבועי 0`;
+            : `t-לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0`;
             
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,12340,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '4' && !customDateInput) {
-        const datePrompt = "t-הקש את התאריך המבוקש, לאתמול הקישו 1 וסולמית, לשלשום הקישו 2 וסולמית, לתאריך ספציפי הקישו 4 ספרות של יום וחודש.";
+        const datePrompt = "t-הקש את התאריך המבוקש, לאתמול הקישו 1 וסולמית, לשלשום הקישו 2 וסולמית, לתאריך ספציפי הקישו 4 ספרות של יום וחודש וסולמית.";
         return new Response(`read=${datePrompt}=custom_date_input,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '4' && customDateInput && !finalReportType) {
         const dateText = await getHebrewDateString(effectiveDate);
         const prompt = dateText 
-            ? `t-${dateText}, לאיחור הקש 1, לחיסור 2, להתנהגות 3` 
-            : `t-לאיחור הקש 1, לחיסור 2, להתנהגות 3`;
+            ? `t-${dateText}, לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3` 
+            : `t-לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3`;
         return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,123,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
@@ -155,7 +155,7 @@ export async function handleYemot(request, env) {
         } else if (actualType === '1') {
             const parts = studentCode.split('*');
             if (parts.length < 2 && !studentCode.endsWith('*')) {
-                return new Response(`read=t-הקשה שגויה. הקש שוב קוד תלמיד כוכבית ודקות=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+                return new Response(`read=t-הקשה שגוי, הקש שוב קוד תלמיד כוכבית ודקות=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
             }
             studentCode = parts[0];
             if (parts.length === 2 && parts[1] === '') {
@@ -163,7 +163,7 @@ export async function handleYemot(request, env) {
             } else if (!isCancel) {
                 minutes = parseInt(parts[1], 10);
                 if (isNaN(minutes)) {
-                    return new Response(`read=t-שגיאה במספר דקות. הקש שוב=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+                    return new Response(`read=t-שגיאה במספר דקות, הקש שוב=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
                 }
             }
         }
@@ -172,7 +172,7 @@ export async function handleYemot(request, env) {
 
         const student = await env.DB.prepare("SELECT * FROM students WHERE code = ?").bind(studentCode).first();
         if (!student) {
-             return new Response(`read=t-תלמיד לא קיים. נסה שוב או הקש כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+             return new Response(`read=t-תלמיד לא קיים, נסה שוב או הקש כוכבית לסיום=${prefix}${nextIndex},,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
 
         if (actualType === '3') {
