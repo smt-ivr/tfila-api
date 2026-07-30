@@ -1,25 +1,45 @@
 import { getCurrentIsraelTime, getWeekRange } from './utils.js';
 
-// הוספנו export כדי שימות יוכל לייבא את הפונקציה
 export async function getWeeklyHebrewInfo(weekStartDate) {
     try {
-        const d = new Date(weekStartDate);
-        d.setDate(d.getDate() + 6); 
-        const saturdayStr = d.toISOString().split('T')[0];
+        const fetches = [];
         
-        const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${saturdayStr}&lg=h`);
-        const data = await response.json();
+        // יצירת בקשות לכל 7 ימי השבוע במקביל
+        for(let i = 0; i <= 6; i++) {
+            const d = new Date(weekStartDate);
+            d.setDate(d.getDate() + i);
+            const dateStr = d.toISOString().split('T')[0];
+            
+            // הוספת &i=on כדי להבטיח התאמה לשעון ישראל
+            fetches.push(
+                fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateStr}&lg=h&i=on`)
+                    .then(r => r.json())
+            );
+        }
+        
+        const results = await Promise.all(fetches);
         
         let parasha = "";
-        let heYear = data.heDateParts ? data.heDateParts.y : "";
+        let heYear = "";
 
-        if (data.events) {
-            const parashaEvent = data.events.find(e => {
-                const clean = e.replace(/\u05BE/g, ' ').replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, '');
-                return clean.includes("פרשת");
-            });
-            if (parashaEvent) {
-                parasha = parashaEvent.replace(/\u05BE/g, ' ').replace(/[\u0591-\u05BD\u05BF-\u05C7\.]/g, ''); 
+        // מעבר על התוצאות מהיום הראשון (ראשון) ועד לשביעי (שבת)
+        for (const data of results) {
+            // שמירת השנה העברית ברגע שמוצאים אותה
+            if (data.heDateParts && !heYear) {
+                heYear = data.heDateParts.y;
+            }
+            
+            if (data.events) {
+                const parashaEvent = data.events.find(e => {
+                    // החלפת מקף עברי למקף רגיל, ומחיקת הניקוד
+                    const clean = e.replace(/\u05BE/g, '-').replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, '');
+                    return clean.includes("פרשת");
+                });
+                
+                if (parashaEvent) {
+                    parasha = parashaEvent.replace(/\u05BE/g, '-').replace(/[\u0591-\u05BD\u05BF-\u05C7\.]/g, ''); 
+                    break; // מצאנו את האירוע, אפשר לעצור את הלולאה
+                }
             }
         }
         return { parasha, heYear };
