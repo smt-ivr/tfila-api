@@ -23,7 +23,10 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
 
         for (const item of results) {
             const data = item.data;
-            hebDates[item.dateStr] = data.hebrew || ""; 
+            
+            // הסרת ניקוד וטעמים מהתאריך העברי שמוחזר מה-API
+            const cleanHebrewDate = (data.hebrew || "").replace(/[\u0591-\u05C7]/g, '');
+            hebDates[item.dateStr] = cleanHebrewDate;
             
             if (data.heDateParts && !heYear) {
                 heYear = data.heDateParts.y;
@@ -81,7 +84,6 @@ export async function getWeeklyData(env, targetDate) {
                 }
             }
 
-            // זיהוי היום הנוכחי ישירות בשרת
             const isToday = (dateStr === today);
 
             daysToShow.push({ 
