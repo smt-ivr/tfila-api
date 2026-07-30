@@ -22,9 +22,12 @@ export async function handleSendEmail(request, env) {
     const dateParam = url.searchParams.get('date') || current.date;
     
     const data = await getWeeklyData(env, dateParam);
-    const htmlContent = buildEmailHTML(data, dateParam);
+    
+    // מעבירים את הזמן האמיתי של היום לצורך סימון (כדי שלא יסמן בסתם שבועות שעברו)
+    const htmlContent = buildEmailHTML(data, current.date);
 
-    const parashaText = data.parasha ? ` - פרשת ${data.parasha}` : '';
+    // ביטול הכפילות - הנתון שמגיע הוא כבר עם המילה 'פרשת'
+    const parashaText = data.parasha ? ` - ${data.parasha}` : '';
     const yearText = data.heYear ? ` ${data.heYear}` : '';
     const subjectLine = `דוח נוכחות יומי${parashaText}${yearText}`;
 
@@ -49,11 +52,11 @@ export async function handleSendEmail(request, env) {
     return { message: "Email sent successfully to: " + uniqueEmails.join(', ') };
 }
 
-function buildEmailHTML(data, currentDateStr) {
+function buildEmailHTML(data, realTodayStr) {
     let rows = '';
     
     const dayHeaders = data.daysToShow.map(d => {
-        const isToday = d.dateStr === currentDateStr;
+        const isToday = d.dateStr === realTodayStr;
         const bgColor = isToday ? '#FEF08A' : '#F3F4F6';
         const todayMarker = isToday ? '<br><span style="font-size:13px; color:#B45309; font-weight:normal;">(היום)</span>' : '';
         
@@ -63,7 +66,7 @@ function buildEmailHTML(data, currentDateStr) {
     }).join('');
 
     const subHeaders = data.daysToShow.map(d => {
-        const isToday = d.dateStr === currentDateStr;
+        const isToday = d.dateStr === realTodayStr;
         const bgColor = isToday ? '#FEF9C3' : '#F9FAFB';
         
         return `<th style="border: 1px solid #D1D5DB; padding: 4px 6px; background-color: ${bgColor}; color: #4B5563; text-align: center; font-size: 14px; font-weight: normal; vertical-align: middle;">זמן</th>
@@ -74,7 +77,7 @@ function buildEmailHTML(data, currentDateStr) {
         let cells = '';
         
         data.daysToShow.forEach(day => {
-            const isToday = day.dateStr === currentDateStr;
+            const isToday = day.dateStr === realTodayStr;
             const cellBg = isToday ? '#FEF9C3' : '#FFFFFF';
             const status = student.weeklyStatus[day.index];
             let timeContent = '';
@@ -103,7 +106,7 @@ function buildEmailHTML(data, currentDateStr) {
         `;
     });
 
-    const parashaText = data.parasha ? ` - פרשת ${data.parasha}` : '';
+    const parashaText = data.parasha ? ` - ${data.parasha}` : '';
     const yearText = data.heYear ? ` ${data.heYear}` : '';
     const titleLine = `דוח נוכחות יומי${parashaText}${yearText}`;
 
