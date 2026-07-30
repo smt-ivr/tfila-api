@@ -3,14 +3,11 @@ import { getCurrentIsraelTime, getWeekRange } from './utils.js';
 export async function getWeeklyHebrewInfo(weekStartDate) {
     try {
         const fetches = [];
-        
-        // יצירת בקשות לכל 7 ימי השבוע במקביל
         for(let i = 0; i <= 6; i++) {
             const d = new Date(weekStartDate);
             d.setDate(d.getDate() + i);
             const dateStr = d.toISOString().split('T')[0];
             
-            // הוספת &i=on כדי להבטיח התאמה לשעון ישראל
             fetches.push(
                 fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateStr}&lg=h&i=on`)
                     .then(r => r.json())
@@ -22,23 +19,19 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
         let parasha = "";
         let heYear = "";
 
-        // מעבר על התוצאות מהיום הראשון (ראשון) ועד לשביעי (שבת)
         for (const data of results) {
-            // שמירת השנה העברית ברגע שמוצאים אותה
             if (data.heDateParts && !heYear) {
                 heYear = data.heDateParts.y;
             }
-            
             if (data.events) {
                 const parashaEvent = data.events.find(e => {
-                    // החלפת מקף עברי למקף רגיל, ומחיקת הניקוד
                     const clean = e.replace(/\u05BE/g, '-').replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, '');
                     return clean.includes("פרשת");
                 });
                 
                 if (parashaEvent) {
                     parasha = parashaEvent.replace(/\u05BE/g, '-').replace(/[\u0591-\u05BD\u05BF-\u05C7\.]/g, ''); 
-                    break; // מצאנו את האירוע, אפשר לעצור את הלולאה
+                    break;
                 }
             }
         }
@@ -54,7 +47,6 @@ export async function getWeeklyData(env, targetDate) {
     
     const { parasha, heYear } = await getWeeklyHebrewInfo(start);
     
-    // סידור התלמידים מספרית לפי הקוד
     const { results: students } = await env.DB.prepare(
         "SELECT * FROM students ORDER BY CAST(code AS INTEGER), class_name, first_name"
     ).all();
@@ -62,6 +54,12 @@ export async function getWeeklyData(env, targetDate) {
     const { results: exceptions } = await env.DB.prepare(
         "SELECT * FROM exceptions WHERE date >= ? AND date <= ?"
     ).bind(start, end).all();
+
+    // שליפת ימי החופש לאותו שבוע
+    const { results: vacations } = await env.DB.prepare(
+        "SELECT date FROM vacations WHERE date >= ? AND date <= ?"
+    ).bind(start, end).all();
+    const vacationDates = vacations.map(v => v.date);
 
     const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
     const daysToShow = [];
@@ -71,9 +69,14 @@ export async function getWeeklyData(env, targetDate) {
         currentDay.setDate(currentDay.getDate() + i);
         const dateStr = currentDay.toISOString().split('T')[0];
         
-        // הצגת ימים רק אם הם קטנים או שווים לזמן האמיתי של השרת
         if (dateStr <= today) {
-            daysToShow.push({ index: i, name: dayNames[i], dateStr });
+            // צירוף המידע האם יום זה הוא חופש
+            daysToShow.push({ 
+                index: i, 
+                name: dayNames[i], 
+                dateStr,
+                isVacation: vacationDates.includes(dateStr)
+            });
         }
     }
 
@@ -81,7 +84,6 @@ export async function getWeeklyData(env, targetDate) {
         const studentExceptions = exceptions.filter(e => e.student_code === student.code);
         const weeklyStatus = {};
         
-        // עוברים רק על הימים שבאמת קיימים / עברו
         daysToShow.forEach(day => {
             const exceptionToday = studentExceptions.find(e => e.date === day.dateStr);
             
