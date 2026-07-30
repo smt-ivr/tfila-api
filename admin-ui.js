@@ -203,7 +203,7 @@ export function getAdminHTML() {
 
         <script>
             const basePath = window.location.pathname.endsWith('/') ? window.location.pathname.slice(0, -1) : window.location.pathname;
-            const API_BASE = basePath.includes('/tfila') ? '/tfila' : '';
+            const API_BASE = basePath.includes('/api/tfila') ? '/api/tfila' : '';
             
             let currentMode = 'add';
             let allStudents = [];
