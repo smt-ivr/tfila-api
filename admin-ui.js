@@ -11,12 +11,23 @@ export function getAdminHTML() {
         <style>
             body { font-family: system-ui, -apple-system, sans-serif; }
             .modal-active { overflow: hidden; }
+            @media print {
+                body { background: white !important; padding: 0 !important; }
+                nav, .print-hide { display: none !important; }
+                #reports-view { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; }
+                table { border-collapse: collapse; width: 100%; border: 1px solid black; }
+                th, td { border: 1px solid black !important; padding: 6px !important; color: black !important; }
+                .bg-yellow-100 { background-color: #FEF9C3 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .bg-yellow-50\\/50 { background-color: #FEFCE8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .bg-gray-200 { background-color: #E5E7EB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .bg-gray-50 { background-color: #F9FAFB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
         </style>
     </head>
     <body class="bg-gray-100 min-h-screen">
 
         <!-- מסך התחברות -->
-        <div id="login-screen" class="min-h-screen flex items-center justify-center hidden">
+        <div id="login-screen" class="min-h-screen flex items-center justify-center hidden print-hide">
             <div class="bg-white p-8 rounded-xl shadow-2xl w-96 max-w-full">
                 <div class="text-center mb-6">
                     <i class="fas fa-shield-alt text-4xl text-blue-600 mb-3"></i>
@@ -28,7 +39,7 @@ export function getAdminHTML() {
         </div>
 
         <!-- מודל הוספה / עריכת תלמיד -->
-        <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 transition-opacity">
+        <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 print-hide transition-opacity">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
                 <div class="flex justify-between items-center mb-6">
                     <h3 id="modal-title" class="text-xl font-bold text-gray-800">הוספת תלמיד חדש</h3>
@@ -61,10 +72,28 @@ export function getAdminHTML() {
             </div>
         </div>
 
+        <!-- מודל שליחת אימייל -->
+        <div id="email-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 print-hide transition-opacity">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-gray-800">שליחת דוח למייל</h3>
+                    <button onclick="closeEmailModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">כתובות אימייל (מופרדות בפסיק):</label>
+                    <input type="text" id="report-emails" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-left" dir="ltr" placeholder="test@example.com">
+                </div>
+                <div class="mt-8 flex justify-end gap-3">
+                    <button onclick="closeEmailModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold transition-colors">ביטול</button>
+                    <button onclick="sendEmail(this)" class="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold transition-colors shadow flex items-center"><i class="fas fa-paper-plane ml-2"></i>שלח</button>
+                </div>
+            </div>
+        </div>
+
         <!-- המסך הראשי -->
         <div id="app-screen" class="hidden">
             <!-- סרגל ניווט -->
-            <nav class="bg-blue-700 text-white shadow-md sticky top-0 z-40">
+            <nav class="bg-blue-700 text-white shadow-md sticky top-0 z-40 print-hide">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex items-center justify-between h-16">
                         <div class="flex items-center">
@@ -83,23 +112,19 @@ export function getAdminHTML() {
                 
                 <!-- תצוגת דוחות -->
                 <div id="reports-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6">
-                    <div class="flex flex-wrap gap-4 items-end mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 justify-between">
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">צפייה לפי שבוע / תאריך:</label>
-                            <div class="flex items-center gap-2">
-                                <input type="date" id="report-date" onchange="loadReports()" class="border px-4 py-2 rounded-lg w-48 focus:ring-2 focus:ring-blue-500 outline-none">
-                                <button onclick="changeWeek(-1)" class="bg-white border hover:bg-gray-100 px-4 py-2 rounded-lg text-sm text-gray-700 shadow-sm font-medium transition-colors" title="שבוע קודם"><i class="fas fa-chevron-right ml-1"></i>הקודם</button>
-                                <button onclick="changeWeek(1)" class="bg-white border hover:bg-gray-100 px-4 py-2 rounded-lg text-sm text-gray-700 shadow-sm font-medium transition-colors" title="שבוע הבא">הבא<i class="fas fa-chevron-left mr-1"></i></button>
-                            </div>
-                            <button onclick="copyApiLink()" class="text-xs text-blue-600 hover:text-blue-800 font-medium mt-2 flex items-center">
-                                <i class="fas fa-link ml-1"></i>העתק קישור API לשבוע זה
-                            </button>
+                    <div class="flex flex-wrap gap-4 items-center mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 justify-between print-hide">
+                        <div class="flex items-center gap-3">
+                            <label class="block text-sm font-bold text-gray-700">בחר שבוע:</label>
+                            <button onclick="changeWeek(-1)" class="bg-white border hover:bg-gray-100 px-3 py-1.5 rounded text-sm shadow-sm transition-colors" title="שבוע קודם"><i class="fas fa-chevron-right"></i></button>
+                            <input type="date" id="report-date" onchange="loadReports()" class="border px-3 py-1.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-40">
+                            <button onclick="changeWeek(1)" class="bg-white border hover:bg-gray-100 px-3 py-1.5 rounded text-sm shadow-sm transition-colors" title="שבוע הבא"><i class="fas fa-chevron-left"></i></button>
                         </div>
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <input type="text" id="report-emails" placeholder="אימייל לשליחה..." class="border px-4 py-2 rounded-lg w-64 text-left focus:ring-2 focus:ring-blue-500 outline-none" dir="ltr">
-                            <button onclick="sendEmail()" class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 font-bold shadow transition-colors"><i class="fas fa-paper-plane ml-2"></i>שלח</button>
+                        <div class="flex gap-2">
+                            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-bold shadow transition-colors"><i class="fas fa-print ml-2"></i>הדפס / שמור כ-PDF</button>
+                            <button onclick="openEmailModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold shadow transition-colors"><i class="fas fa-envelope ml-2"></i>שלח במייל</button>
                         </div>
                     </div>
+                    
                     <div id="report-container">
                         <!-- הטבלה תרונדר כאן דינמית -->
                         <div class="text-center text-gray-500 py-20 text-lg"><i class="fas fa-circle-notch fa-spin ml-2"></i>טוען נתונים...</div>
@@ -107,7 +132,7 @@ export function getAdminHTML() {
                 </div>
 
                 <!-- תצוגת תלמידים -->
-                <div id="students-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6 hidden">
+                <div id="students-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6 hidden print-hide">
                     
                     <!-- סרגל כלים (חיפוש, סינון, כפתור הוספה) -->
                     <div class="flex flex-wrap gap-4 items-center mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 justify-between">
@@ -223,17 +248,6 @@ export function getAdminHTML() {
                 return data;
             }
 
-            function copyApiLink() {
-                const dateVal = document.getElementById('report-date').value;
-                const pass = localStorage.getItem('admin_pass');
-                const url = new URL(window.location.origin + API_BASE + '/reports');
-                if (dateVal) url.searchParams.set('date', dateVal);
-                url.searchParams.set('code', pass);
-                
-                navigator.clipboard.writeText(url.toString());
-                alert('הקישור הועתק! ניתן להשתמש בו ישירות בדפדפן או כ-API.');
-            }
-
             // --- ניווט וטאבים ---
             function switchTab(tab) {
                 document.getElementById('reports-view').classList.add('hidden');
@@ -265,18 +279,21 @@ export function getAdminHTML() {
                     document.getElementById('report-container').innerHTML = '<div class="text-center text-blue-500 py-20 text-lg"><i class="fas fa-circle-notch fa-spin ml-2"></i>טוען נתונים...</div>';
                     
                     const data = await apiCall(endpoint);
-                    renderReportTable(data, dateVal);
+                    renderReportTable(data);
                 } catch (e) {
                     document.getElementById('report-container').innerHTML = '<div class="text-red-500 font-bold p-4 text-center text-lg">שגיאה בטעינת נתונים</div>';
                 }
             }
 
-            function renderReportTable(data, currentDateStr) {
+            function renderReportTable(data) {
                 let headersHTML = '';
                 let subHeadersHTML = '';
                 
+                // לקיחת התאריך האמיתי של היום לפי שעון ישראל מהדפדפן
+                const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
                 data.daysToShow.forEach(d => {
-                    const isToday = d.dateStr === currentDateStr;
+                    const isToday = d.dateStr === todayStr;
                     const bgClass = isToday ? 'bg-yellow-100' : 'bg-gray-100';
                     const textClass = isToday ? 'text-yellow-800' : 'text-gray-700';
                     const todaySpan = isToday ? '<br><span class="text-xs text-yellow-600 font-normal">(היום)</span>' : '';
@@ -292,7 +309,7 @@ export function getAdminHTML() {
                 data.report.forEach(student => {
                     let cells = '';
                     data.daysToShow.forEach(day => {
-                        const isToday = day.dateStr === currentDateStr;
+                        const isToday = day.dateStr === todayStr;
                         const cellBg = isToday ? 'bg-yellow-50/50' : 'bg-white';
                         const status = student.weeklyStatus[day.index];
                         
@@ -316,15 +333,16 @@ export function getAdminHTML() {
                     \`;
                 });
 
-                const parashaText = data.parasha ? ' - פרשת ' + data.parasha : '';
+                // ביטול הוספת "פרשת" מיותרת
+                const parashaText = data.parasha ? ' - ' + data.parasha : '';
                 const yearText = data.heYear ? ' ' + data.heYear : '';
                 
                 document.getElementById('report-container').innerHTML = \`
                     <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 flex items-center justify-center gap-2">
-                        <i class="far fa-calendar-alt text-blue-600"></i>
+                        <i class="far fa-calendar-alt text-blue-600 print-hide"></i>
                         דוח נוכחות שבועי\${parashaText}\${yearText}
                     </h2>
-                    <div class="overflow-x-auto rounded-xl border border-gray-200">
+                    <div class="overflow-x-auto rounded-xl border border-gray-200" style="border-radius: 0; border: none;">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr>
@@ -341,23 +359,36 @@ export function getAdminHTML() {
                 \`;
             }
 
-            async function sendEmail() {
+            function openEmailModal() {
+                document.getElementById('email-modal').classList.remove('hidden');
+                document.getElementById('email-modal').classList.add('flex');
+                document.body.classList.add('modal-active');
+            }
+            
+            function closeEmailModal() {
+                document.getElementById('email-modal').classList.add('hidden');
+                document.getElementById('email-modal').classList.remove('flex');
+                document.body.classList.remove('modal-active');
+            }
+
+            async function sendEmail(btnElement) {
                 const emails = document.getElementById('report-emails').value.trim();
                 const dateVal = document.getElementById('report-date').value;
                 if (!emails) return alert('נא להזין לפחות כתובת אימייל אחת');
                 
-                const btn = event.currentTarget;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>שולח...';
-                btn.disabled = true;
+                const originalContent = btnElement.innerHTML;
+                btnElement.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>שולח...';
+                btnElement.disabled = true;
 
                 try {
                     const res = await apiCall(\`/send-email?email=\${encodeURIComponent(emails)}&date=\${dateVal}\`, 'POST');
                     alert(res.message || 'המייל נשלח בהצלחה!');
+                    closeEmailModal();
                 } catch (e) {
                     alert('שגיאה בשליחת המייל: ' + e.message);
                 } finally {
-                    btn.innerHTML = '<i class="fas fa-paper-plane ml-2"></i>שלח';
-                    btn.disabled = false;
+                    btnElement.innerHTML = originalContent;
+                    btnElement.disabled = false;
                 }
             }
 
@@ -365,7 +396,7 @@ export function getAdminHTML() {
             async function loadStudents() {
                 try {
                     const data = await apiCall('/students');
-                    allStudents = data.data; // השמירה בזיכרון המקומי לסינון
+                    allStudents = data.data; 
                     updateClassFilter();
                     renderStudents();
                 } catch(e) {
@@ -476,7 +507,6 @@ export function getAdminHTML() {
             function toggleSelectAll() {
                 const isChecked = document.getElementById('cb-all').checked;
                 document.querySelectorAll('.student-cb').forEach(cb => {
-                    // סמן רק אם השורה מוצגת כרגע (בזמן סינון)
                     if (cb.closest('tr').style.display !== 'none') {
                         cb.checked = isChecked;
                     }
@@ -504,7 +534,6 @@ export function getAdminHTML() {
                 }
             }
 
-            // הפעלה ראשונית
             window.onload = () => {
                 const today = new Date();
                 const options = { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' };
