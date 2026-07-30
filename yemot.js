@@ -4,7 +4,6 @@ import { getWeeklyHebrewInfo } from './reports.js';
 
 async function getHebrewDateString(dateString) {
     try {
-        // מביאים את תחילת השבוע (יום ראשון) ושולחים לפונקציה המשותפת
         const { start } = getWeekRange(dateString);
         const { parasha } = await getWeeklyHebrewInfo(start);
         
@@ -12,7 +11,7 @@ async function getHebrewDateString(dateString) {
         const dayName = days[new Date(dateString).getDay()];
         
         let resText = parasha ? `יום ${dayName} ${parasha}` : `יום ${dayName}`;
-        return resText.replace(/\./g, '').replace(/-/g, ' ');
+        return resText.replace(/\./g, '').replace(/-/g, ' '); 
     } catch (error) {
         return ""; 
     }
@@ -89,10 +88,15 @@ export async function handleYemot(request, env) {
     const actualType = (reportType === '4') ? finalReportType : reportType;
 
     if (!reportType) {
+        // בדיקה האם היום הנוכחי הוא חופש
+        const vacCheck = await env.DB.prepare("SELECT date FROM vacations WHERE date = ?").bind(current.date).first();
+        const isVacation = !!vacCheck;
+        const vacMsg = isVacation ? "מעודכן במערכת שאין היום לימודים, " : "";
+
         const dateText = await getHebrewDateString(current.date);
         const welcomeMessage = dateText 
-            ? `t-${dateText}, לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0` 
-            : `t-לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0`;
+            ? `t-${dateText}, ${vacMsg}לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0` 
+            : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0`;
             
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,12340,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
@@ -103,20 +107,24 @@ export async function handleYemot(request, env) {
     }
 
     if (reportType === '4' && customDateInput && !finalReportType) {
+        // בדיקה האם התאריך הספציפי שהוזן הוא חופש
+        const vacCheck = await env.DB.prepare("SELECT date FROM vacations WHERE date = ?").bind(effectiveDate).first();
+        const isVacation = !!vacCheck;
+        const vacMsg = isVacation ? "מעודכן במערכת שאין היום לימודים, " : "";
+
         const dateText = await getHebrewDateString(effectiveDate);
         const prompt = dateText 
-            ? `t-${dateText}, לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3` 
-            : `t-לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3`;
+            ? `t-${dateText}, ${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3` 
+            : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3`;
         return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,123,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     let prefix = '';
-    let actionVerb = '';
     let dbType = '';
 
-    if (actualType === '1') { prefix = 'late_data_'; actionVerb = 'איחור'; dbType = 'late'; }
-    else if (actualType === '2') { prefix = 'abs_data_'; actionVerb = 'חיסור'; dbType = 'absence'; }
-    else if (actualType === '3') { prefix = 'beh_data_'; actionVerb = 'התנהגות'; }
+    if (actualType === '1') { prefix = 'late_data_'; dbType = 'late'; }
+    else if (actualType === '2') { prefix = 'abs_data_'; dbType = 'absence'; }
+    else if (actualType === '3') { prefix = 'beh_data_'; }
     
     if (!prefix) {
         return new Response("id_list_message=t-שגיאה בתפריט&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
