@@ -12,17 +12,29 @@ export function getAdminHTML() {
             body { font-family: system-ui, -apple-system, sans-serif; }
             .modal-active { overflow: hidden; }
             .cal-cell:hover .cal-overlay { display: flex; }
+            
+            /* רקע עדין לימי חופש בדוח */
+            .vacation-bg {
+                background-image: repeating-linear-gradient(
+                    45deg,
+                    #f9fafb,
+                    #f9fafb 10px,
+                    #f3f4f6 10px,
+                    #f3f4f6 20px
+                );
+            }
+
             @media print {
                 body { background: white !important; padding: 0 !important; }
                 nav, .print-hide { display: none !important; }
                 #reports-view { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; }
                 table { border-collapse: collapse; width: 100%; border: 1px solid black; }
                 th, td { border: 1px solid black !important; padding: 6px !important; color: black !important; }
-                .bg-yellow-100 { background-color: #FEF9C3 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .bg-yellow-50\\/50 { background-color: #FEFCE8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .bg-blue-100 { background-color: #DBEAFE !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .bg-blue-50\\/30 { background-color: #EFF6FF !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .bg-gray-200 { background-color: #E5E7EB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .bg-gray-300 { background-color: #D1D5DB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .bg-gray-50 { background-color: #F9FAFB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .vacation-bg { background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             }
         </style>
     </head>
@@ -39,7 +51,7 @@ export function getAdminHTML() {
             </div>
         </div>
 
-        <!-- מודלים קיימים ללא שינוי (הוספת תלמיד + שליחת מייל) -->
+        <!-- מודל הוספה/עריכה -->
         <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 print-hide transition-opacity">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
                 <div class="flex justify-between items-center mb-6">
@@ -61,6 +73,7 @@ export function getAdminHTML() {
             </div>
         </div>
 
+        <!-- מודל שליחת אימייל -->
         <div id="email-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 print-hide transition-opacity">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
                 <div class="flex justify-between items-center mb-6">
@@ -80,7 +93,6 @@ export function getAdminHTML() {
 
         <!-- המסך הראשי -->
         <div id="app-screen" class="hidden">
-            <!-- סרגל ניווט תלת-לשוני -->
             <nav class="bg-blue-700 text-white shadow-md sticky top-0 z-40 print-hide">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex items-center justify-between h-16">
@@ -109,7 +121,7 @@ export function getAdminHTML() {
                             <button onclick="changeWeek(1)" class="bg-white border hover:bg-gray-100 px-3 py-1.5 rounded text-sm shadow-sm transition-colors" title="שבוע הבא"><i class="fas fa-chevron-left"></i></button>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-bold shadow transition-colors"><i class="fas fa-print ml-2"></i>הדפס / שומר כ-PDF</button>
+                            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-bold shadow transition-colors"><i class="fas fa-print ml-2"></i>הדפס / שמור כ-PDF</button>
                             <button onclick="openEmailModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold shadow transition-colors"><i class="fas fa-envelope ml-2"></i>שלח במייל</button>
                         </div>
                     </div>
@@ -119,7 +131,6 @@ export function getAdminHTML() {
 
                 <!-- תצוגת תלמידים -->
                 <div id="students-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6 hidden print-hide">
-                    <!-- ... קוד תצוגת תלמידים נשאר כשהיה ... -->
                     <div class="flex flex-wrap gap-4 items-center mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 justify-between">
                         <div class="flex flex-wrap gap-4 items-center w-full md:w-auto">
                             <div class="relative">
@@ -157,7 +168,7 @@ export function getAdminHTML() {
                     </div>
                 </div>
 
-                <!-- יומן חופשות חכם -->
+                <!-- יומן חופשות -->
                 <div id="vacations-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6 hidden print-hide">
                     <div class="flex items-center justify-between mb-8">
                         <h2 class="text-2xl font-bold text-gray-800"><i class="far fa-calendar-check text-blue-600 ml-2"></i>ניהול ימי חופשה</h2>
@@ -181,9 +192,7 @@ export function getAdminHTML() {
                                     <th class="p-3 w-[14.28%] border font-bold">שבת</th>
                                 </tr>
                             </thead>
-                            <tbody id="cal-body">
-                                <!-- תאי היומן ירונדרו כאן -->
-                            </tbody>
+                            <tbody id="cal-body"></tbody>
                         </table>
                         <p class="text-sm text-gray-500 mt-4 text-center"><i class="fas fa-info-circle ml-1"></i> לחץ על תאריך כדי להגדיר או לבטל יום חופש.</p>
                     </div>
@@ -198,10 +207,31 @@ export function getAdminHTML() {
             
             let currentMode = 'add';
             let allStudents = [];
-            
-            // משתנים עבור יומן החופשות
             let calDate = new Date();
             let allVacationDates = [];
+
+            // פונקציית עזר להמרת תאריך עברי לאותיות (גימטריה) בכל הדפדפנים
+            function getHebrewDateString(date) {
+                try {
+                    // מנסה להשתמש בהמרה טבעית של הדפדפן אם הוא תומך
+                    const native = new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-hebr', { day: 'numeric', month: 'long' }).format(date);
+                    if (!/[0-9]/.test(native)) return native; 
+                } catch(e) {}
+                
+                // גיבוי גורף - המרה ידנית לאותיות
+                const parts = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long' }).formatToParts(date);
+                const gematria = ["", "א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ז'", "ח'", "ט'", "י'", "י\\"א", "י\\"ב", "י\\"ג", "י\\"ד", "ט\\"ו", "ט\\"ז", "י\\"ז", "י\\"ח", "י\\"ט", "כ'", "כ\\"א", "כ\\"ב", "כ\\"ג", "כ\\"ד", "כ\\"ה", "כ\\"ו", "כ\\"ז", "כ\\"ח", "כ\\"ט", "ל'"];
+                let d = "", m = "";
+                parts.forEach(p => {
+                    if(p.type === 'day') {
+                        const num = parseInt(p.value, 10);
+                        d = (num && gematria[num]) ? gematria[num] : p.value;
+                    }
+                    if(p.type === 'month') m = p.value;
+                });
+                if(!m.startsWith('ב')) m = 'ב' + m;
+                return d + ' ' + m;
+            }
 
             function checkAuth() {
                 if (!localStorage.getItem('admin_pass')) {
@@ -256,8 +286,6 @@ export function getAdminHTML() {
                 if (tab === 'vacations') loadVacations();
             }
 
-            // --- לוגיקת דוח נוכחות ---
-
             function changeWeek(offset) {
                 const dateInput = document.getElementById('report-date');
                 const current = new Date(dateInput.value || new Date());
@@ -288,19 +316,21 @@ export function getAdminHTML() {
                     const isToday = d.dateStr === todayStr;
                     const isVacation = d.isVacation;
                     
-                    const bgClass = isVacation ? 'bg-gray-300' : (isToday ? 'bg-yellow-100' : 'bg-gray-100');
-                    const textClass = isVacation ? 'text-gray-800' : (isToday ? 'text-yellow-800' : 'text-gray-700');
-                    const todaySpan = isToday && !isVacation ? '<br><span class="text-xs text-yellow-600 font-normal">(היום)</span>' : '';
-                    const vacSpan = isVacation ? '<br><span class="text-xs font-bold text-gray-700 mt-1 block">אין לימודים</span>' : '';
+                    const bgClass = isVacation ? 'bg-gray-200' : (isToday ? 'bg-blue-100' : 'bg-gray-100');
+                    const textClass = isVacation ? 'text-gray-500' : (isToday ? 'text-blue-800' : 'text-gray-700');
+                    const todaySpan = isToday && !isVacation ? '<span class="text-xs text-blue-600 font-bold block mt-1">(היום)</span>' : '';
                     
-                    // הוסר כפתור "הגדר כחופש" מהטבלה כדי לשמור על עיצוב נקי
-                    headersHTML += \`<th colspan="2" class="border-b border-l border-r p-3 text-center \${bgClass} \${textClass}">\${d.name}\${todaySpan}\${vacSpan}</th>\`;
-                    
-                    const subBgClass = isVacation ? 'bg-gray-200' : 'bg-gray-50';
-                    subHeadersHTML += \`
-                        <th class="border p-2 text-center text-sm font-normal text-gray-500 \${subBgClass} w-16">זמן</th>
-                        <th class="border p-2 text-center text-sm font-normal text-gray-500 \${subBgClass} w-16">התנהגות</th>
-                    \`;
+                    if (isVacation) {
+                        // מיזוג עמודות החופש בראש הטבלה
+                        headersHTML += \`<th colspan="2" class="border-b-0 border-l-2 border-r border-gray-300 p-3 text-center \${bgClass} \${textClass} font-bold">\${d.name}</th>\`;
+                        subHeadersHTML += \`<th colspan="2" class="border-b border-l-2 border-r border-gray-300 p-1 text-center text-xs font-bold text-gray-500 bg-gray-200">אין לימודים</th>\`;
+                    } else {
+                        headersHTML += \`<th colspan="2" class="border-b border-l-2 border-r border-gray-300 p-3 text-center \${bgClass} \${textClass} font-bold">\${d.name}\${todaySpan}</th>\`;
+                        subHeadersHTML += \`
+                            <th class="border-b border-l border-gray-200 p-2 text-center text-sm text-gray-600 bg-gray-50 font-medium">זמן</th>
+                            <th class="border-b border-l-2 border-gray-300 p-2 text-center text-sm text-gray-600 bg-gray-50 font-medium">התנהגות</th>
+                        \`;
+                    }
                 });
 
                 let rowsHTML = '';
@@ -309,24 +339,28 @@ export function getAdminHTML() {
                     data.daysToShow.forEach(day => {
                         const isToday = day.dateStr === todayStr;
                         const isVacation = day.isVacation;
-                        const cellBg = isVacation ? 'bg-gray-200' : (isToday ? 'bg-yellow-50/50' : 'bg-white');
                         const status = student.weeklyStatus[day.index];
                         
-                        let timeContent = '';
-                        // אם אין חריגה (ok), לא מוצג "V". התא נשאר ריק לחלוטין.
-                        if (status.type === 'absence') timeContent = '<span class="text-red-600 font-bold text-2xl leading-none">-</span>';
-                        else if (status.type === 'late') timeContent = \`<span class="text-orange-600 text-xs font-bold bg-orange-100 px-1 py-0.5 rounded">\${status.minutes} דק'</span>\`;
+                        if (isVacation) {
+                            // תא ממוזג עם רקע פסים ליום חופש
+                            cells += \`<td colspan="2" class="border-b border-l-2 border-gray-300 p-2 text-center vacation-bg"></td>\`;
+                        } else {
+                            const cellBg = isToday ? 'bg-blue-50/30' : 'bg-white';
+                            let timeContent = '';
+                            if (status.type === 'absence') timeContent = '<span class="text-red-500 font-bold text-2xl leading-none">-</span>';
+                            else if (status.type === 'late') timeContent = \`<span class="text-orange-600 text-xs font-bold bg-orange-100 px-1.5 py-0.5 rounded">\${status.minutes} דק'</span>\`;
 
-                        cells += \`
-                            <td class="border p-2 text-center align-middle \${cellBg}">\${timeContent}</td>
-                            <td class="border p-2 text-center align-middle font-bold text-lg \${cellBg} \${status.behaviorMark === 'ב' ? 'text-red-500' : 'text-gray-700'}">\${status.behaviorMark}</td>
-                        \`;
+                            cells += \`
+                                <td class="border-b border-l border-gray-200 p-2 text-center align-middle \${cellBg}">\${timeContent}</td>
+                                <td class="border-b border-l-2 border-gray-300 p-2 text-center align-middle font-bold text-lg \${cellBg} \${status.behaviorMark === 'ב' ? 'text-red-500' : 'text-gray-700'}">\${status.behaviorMark}</td>
+                            \`;
+                        }
                     });
                     rowsHTML += \`
-                        <tr class="hover:bg-blue-50/50 transition-colors">
-                            <td class="border p-3 font-bold text-gray-800 whitespace-nowrap">\${student.first_name}</td>
-                            <td class="border p-3 font-bold text-gray-800 whitespace-nowrap">\${student.last_name}</td>
-                            <td class="border p-3 text-gray-600 text-center">\${student.class_name || ''}</td>
+                        <tr class="hover:bg-blue-50 transition-colors">
+                            <td class="border-b border-l border-gray-300 p-3 font-bold text-gray-800 whitespace-nowrap bg-white">\${student.first_name}</td>
+                            <td class="border-b border-l border-gray-300 p-3 font-bold text-gray-800 whitespace-nowrap bg-white">\${student.last_name}</td>
+                            <td class="border-b border-l-2 border-gray-400 p-3 text-gray-600 text-center bg-white">\${student.class_name || ''}</td>
                             \${cells}
                         </tr>
                     \`;
@@ -340,13 +374,13 @@ export function getAdminHTML() {
                         <i class="far fa-calendar-alt text-blue-600 print-hide"></i>
                         דוח נוכחות שבועי\${parashaText}\${yearText}
                     </h2>
-                    <div class="overflow-x-auto rounded-xl border border-gray-200" style="border-radius: 0; border: none;">
+                    <div class="overflow-x-auto rounded-xl border border-gray-300 shadow-sm">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" class="border p-4 bg-gray-200 text-gray-800 font-bold w-32">שם פרטי</th>
-                                    <th rowspan="2" class="border p-4 bg-gray-200 text-gray-800 font-bold w-32">משפחה</th>
-                                    <th rowspan="2" class="border p-4 bg-gray-200 text-gray-800 font-bold w-20">כיתה</th>
+                                    <th rowspan="2" class="border-b border-l border-gray-300 p-4 bg-gray-200 text-gray-800 font-bold w-32">שם פרטי</th>
+                                    <th rowspan="2" class="border-b border-l border-gray-300 p-4 bg-gray-200 text-gray-800 font-bold w-32">משפחה</th>
+                                    <th rowspan="2" class="border-b border-l-2 border-gray-400 p-4 bg-gray-200 text-gray-800 font-bold w-20">כיתה</th>
                                     \${headersHTML}
                                 </tr>
                                 <tr>\${subHeadersHTML}</tr>
@@ -357,22 +391,15 @@ export function getAdminHTML() {
                 \`;
             }
 
-            // --- לוגיקת יומן חופשות ---
-
             async function loadVacations() {
                 try {
                     const data = await apiCall('/vacations');
-                    allVacationDates = data; // מערך של תאריכים
+                    allVacationDates = data; 
                     renderCalendar();
-                } catch(e) {
-                    console.error('שגיאה בטעינת ימי חופשה:', e);
-                }
+                } catch(e) { console.error('שגיאה בטעינת ימי חופשה:', e); }
             }
 
-            function changeCalendarMonth(offset) {
-                calDate.setMonth(calDate.getMonth() + offset);
-                renderCalendar();
-            }
+            function changeCalendarMonth(offset) { calDate.setMonth(calDate.getMonth() + offset); renderCalendar(); }
 
             function renderCalendar() {
                 const year = calDate.getFullYear();
@@ -388,8 +415,6 @@ export function getAdminHTML() {
                 tbody.innerHTML = '';
                 
                 let date = 1;
-                // פורמט תאריך עברי טבעי שנתמך בכל הדפדפנים המודרניים
-                const hebFormatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long' });
                 
                 for (let i = 0; i < 6; i++) {
                     let row = document.createElement('tr');
@@ -402,9 +427,8 @@ export function getAdminHTML() {
                             cell.className = 'border p-3 h-28 bg-gray-50';
                         } else {
                             const currentDate = new Date(year, month, date);
-                            // התאמת התאריך הלועזי לשרת (שמירת שעון ישראל)
                             const dateStr = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(currentDate);
-                            const hebDateStr = hebFormatter.format(currentDate);
+                            const hebDateStr = getHebrewDateString(currentDate);
                             
                             const isVac = allVacationDates.includes(dateStr);
                             
@@ -415,7 +439,7 @@ export function getAdminHTML() {
                             numDiv.innerText = date;
                             
                             const hebDiv = document.createElement('div');
-                            hebDiv.className = \`text-sm mt-1 \${isVac ? 'text-gray-600 font-bold' : 'text-gray-500'}\`;
+                            hebDiv.className = \`text-sm mt-1 \${isVac ? 'text-gray-700 font-bold' : 'text-gray-500'}\`;
                             hebDiv.innerText = hebDateStr;
                             
                             if (isVac) {
@@ -425,7 +449,6 @@ export function getAdminHTML() {
                                 cell.appendChild(badge);
                             }
 
-                            // אפקט Hover נעים
                             const overlay = document.createElement('div');
                             overlay.className = 'cal-overlay absolute inset-0 bg-black bg-opacity-10 hidden items-center justify-center font-bold text-sm text-gray-800 rounded shadow-inner';
                             overlay.innerText = isVac ? 'בטל חופש' : 'הגדר כחופש';
@@ -448,40 +471,27 @@ export function getAdminHTML() {
             async function toggleVacationInCalendar(dateStr, isVacation) {
                 try {
                     await apiCall('/toggle-vacation', 'POST', { date: dateStr, isVacation });
-                    if (isVacation) {
-                        allVacationDates.push(dateStr);
-                    } else {
-                        allVacationDates = allVacationDates.filter(d => d !== dateStr);
-                    }
-                    renderCalendar(); // רענון מהיר של היומן
-                } catch(e) {
-                    alert('שגיאה בהגדרת חופשה: ' + e.message);
-                }
+                    if (isVacation) allVacationDates.push(dateStr);
+                    else allVacationDates = allVacationDates.filter(d => d !== dateStr);
+                    renderCalendar(); 
+                } catch(e) { alert('שגיאה בהגדרת חופשה: ' + e.message); }
             }
-
-            // --- לוגיקת תלמידים והודעות למייל ... ---
 
             function openEmailModal() {
-                document.getElementById('email-modal').classList.remove('hidden');
-                document.getElementById('email-modal').classList.add('flex');
-                document.body.classList.add('modal-active');
+                document.getElementById('email-modal').classList.remove('hidden'); document.getElementById('email-modal').classList.add('flex'); document.body.classList.add('modal-active');
             }
             function closeEmailModal() {
-                document.getElementById('email-modal').classList.add('hidden');
-                document.getElementById('email-modal').classList.remove('flex');
-                document.body.classList.remove('modal-active');
+                document.getElementById('email-modal').classList.add('hidden'); document.getElementById('email-modal').classList.remove('flex'); document.body.classList.remove('modal-active');
             }
             async function sendEmail(btnElement) {
                 const emails = document.getElementById('report-emails').value.trim();
                 const dateVal = document.getElementById('report-date').value;
                 if (!emails) return alert('נא להזין לפחות כתובת אימייל אחת');
                 const originalContent = btnElement.innerHTML;
-                btnElement.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>שולח...';
-                btnElement.disabled = true;
+                btnElement.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>שולח...'; btnElement.disabled = true;
                 try {
                     const res = await apiCall(\`/send-email?email=\${encodeURIComponent(emails)}&date=\${dateVal}\`, 'POST');
-                    alert(res.message || 'המייל נשלח בהצלחה!');
-                    closeEmailModal();
+                    alert(res.message || 'המייל נשלח בהצלחה!'); closeEmailModal();
                 } catch (e) { alert('שגיאה בשליחת המייל: ' + e.message); } 
                 finally { btnElement.innerHTML = originalContent; btnElement.disabled = false; }
             }
@@ -490,15 +500,13 @@ export function getAdminHTML() {
                 try {
                     const data = await apiCall('/students');
                     allStudents = data.data; 
-                    updateClassFilter();
-                    renderStudents();
+                    updateClassFilter(); renderStudents();
                 } catch(e) { alert('שגיאה בטעינת תלמידים'); }
             }
 
             function updateClassFilter() {
                 const classes = [...new Set(allStudents.map(s => s.class_name).filter(Boolean))].sort();
-                const select = document.getElementById('filter-class');
-                const currentVal = select.value;
+                const select = document.getElementById('filter-class'); const currentVal = select.value;
                 select.innerHTML = '<option value="">כל הכיתות</option>' + classes.map(c => \`<option value="\${c}">\${c}</option>\`).join('');
                 select.value = currentVal;
             }
@@ -506,8 +514,7 @@ export function getAdminHTML() {
             function renderStudents() {
                 const term = document.getElementById('search-student').value.toLowerCase();
                 const cls = document.getElementById('filter-class').value;
-                const tbody = document.getElementById('students-tbody');
-                const emptyMsg = document.getElementById('no-students-msg');
+                const tbody = document.getElementById('students-tbody'); const emptyMsg = document.getElementById('no-students-msg');
                 tbody.innerHTML = '';
                 
                 const filtered = allStudents.filter(s => {
@@ -560,7 +567,7 @@ export function getAdminHTML() {
             }
 
             async function deleteStudent(code) {
-                if(!confirm('האם אתה בטוח שברצונך למחוק תלמיד זה? כל דיווחי הנוכחות שלו יימחקו גם כן!')) return;
+                if(!confirm('האם אתה בטוח שברצונך למחוק תלמיד זה?')) return;
                 try { await apiCall('/delete-student', 'POST', { code }); loadStudents(); } catch(e) { alert('שגיאה במחיקה: ' + e.message); }
             }
 
