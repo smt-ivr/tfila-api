@@ -29,7 +29,7 @@ export default {
         const path = url.pathname;
 
         try {
-            // מסלולים פומביים לחלוטין (מערכת ימות המשיח)
+            // מסלולים פומביים לחלוטין
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
             
@@ -40,30 +40,33 @@ export default {
                 }
             }
 
-            // --- מערכת אימות (Authentication Middleware) למסלולי ה-API השמורים ---
+            // --- מערכת אימות ---
             const passHeader = request.headers.get('X-Admin-Pass');
-            let realPass = '102050'; // סיסמת ברירת מחדל במידה והטבלה טרם הוגדרה
+            const passQuery = url.searchParams.get('code');
+            const providedPass = passHeader || passQuery; // תמיכה גם בהדר וגם בפרמטר URL
             
+            let realPass = null;
             try {
+                // משיכת הסיסמה ממסד הנתונים בלבד - ללא סיסמה בקוד
                 const dbPassRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'admin_password'").first();
                 if (dbPassRow) realPass = dbPassRow.value;
-            } catch (e) {
-                // מתעלם משגיאות במידה והטבלה טרם קיימת במסד הנתונים
-            }
+            } catch (e) {}
 
-            // טיפול בבקשת התחברות
+            // טיפול בבקשת התחברות מהאתר
             if (path.endsWith('/login') && request.method === 'POST') {
+                if (!realPass) return jsonResponse({ error: "המערכת טרם הוגדרה. אנא הוסף סיסמה במסד הנתונים." }, 500);
+                
                 const body = await request.json();
                 if (body.password === realPass) return jsonResponse({ success: true });
                 return jsonResponse({ error: "סיסמה שגויה" }, 401);
             }
 
-            // חסימת הגישה למסלולים מוגנים ללא סיסמה תקינה בהדר
-            if (passHeader !== realPass) {
+            // חסימת הגישה אם אין סיסמה תקינה או אם השרת לא הוגדר
+            if (!realPass || providedPass !== realPass) {
                 return jsonResponse({ error: "Unauthorized" }, 401);
             }
 
-            // --- מסלולים מוגנים (דורשים סיסמה) ---
+            // --- מסלולים מוגנים (דורשים סיסמה תקינה) ---
             if (path.endsWith('/send-email') && request.method === 'POST') {
                 const result = await handleSendEmail(request, env);
                 return jsonResponse(result);
