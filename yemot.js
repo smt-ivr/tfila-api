@@ -12,7 +12,7 @@ async function getHebrewDateString(dateString) {
         const dayName = days[new Date(dateString).getDay()];
         
         let resText = parasha ? `יום ${dayName} ${parasha}` : `יום ${dayName}`;
-        return resText.replace(/\./g, ''); 
+        return resText.replace(/\./g, '').replace(/-/g, ' ');
     } catch (error) {
         return ""; 
     }
