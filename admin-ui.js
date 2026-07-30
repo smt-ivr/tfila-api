@@ -11,6 +11,7 @@ export function getAdminHTML() {
         <style>
             body { font-family: system-ui, -apple-system, sans-serif; }
             .modal-active { overflow: hidden; }
+            .cal-cell:hover .cal-overlay { display: flex; }
             @media print {
                 body { background: white !important; padding: 0 !important; }
                 nav, .print-hide { display: none !important; }
@@ -27,7 +28,6 @@ export function getAdminHTML() {
     </head>
     <body class="bg-gray-100 min-h-screen">
 
-        <!-- מסך התחברות -->
         <div id="login-screen" class="min-h-screen flex items-center justify-center hidden print-hide">
             <div class="bg-white p-8 rounded-xl shadow-2xl w-96 max-w-full">
                 <div class="text-center mb-6">
@@ -39,7 +39,7 @@ export function getAdminHTML() {
             </div>
         </div>
 
-        <!-- מודל הוספה / עריכת תלמיד -->
+        <!-- מודלים קיימים ללא שינוי (הוספת תלמיד + שליחת מייל) -->
         <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 print-hide transition-opacity">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
                 <div class="flex justify-between items-center mb-6">
@@ -47,24 +47,12 @@ export function getAdminHTML() {
                     <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
                 </div>
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">קוד אישי (מספר)</label>
-                        <input type="number" id="stu-code" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">קוד אישי (מספר)</label><input type="number" id="stu-code" class="w-full border px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">שם פרטי</label>
-                            <input type="text" id="stu-first" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">משפחה</label>
-                            <input type="text" id="stu-last" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
+                        <div><label class="block text-sm font-bold text-gray-700 mb-1">שם פרטי</label><input type="text" id="stu-first" class="w-full border px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
+                        <div><label class="block text-sm font-bold text-gray-700 mb-1">משפחה</label><input type="text" id="stu-last" class="w-full border px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">כיתה</label>
-                        <input type="text" id="stu-class" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">כיתה</label><input type="text" id="stu-class" class="w-full border px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                 </div>
                 <div class="mt-8 flex justify-end gap-3">
                     <button onclick="closeModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold transition-colors">ביטול</button>
@@ -73,7 +61,6 @@ export function getAdminHTML() {
             </div>
         </div>
 
-        <!-- מודל שליחת אימייל -->
         <div id="email-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 print-hide transition-opacity">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
                 <div class="flex justify-between items-center mb-6">
@@ -93,15 +80,16 @@ export function getAdminHTML() {
 
         <!-- המסך הראשי -->
         <div id="app-screen" class="hidden">
-            <!-- סרגל ניווט -->
+            <!-- סרגל ניווט תלת-לשוני -->
             <nav class="bg-blue-700 text-white shadow-md sticky top-0 z-40 print-hide">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex items-center justify-between h-16">
                         <div class="flex items-center">
                             <span class="text-xl font-bold ml-8"><i class="fas fa-graduation-cap ml-2"></i>ניהול נוכחות</span>
                             <div class="flex space-x-reverse space-x-2">
-                                <button id="tab-reports" onclick="switchTab('reports')" class="px-4 py-2 rounded-lg font-medium transition-colors bg-blue-800">דוח נוכחות</button>
+                                <button id="tab-reports" onclick="switchTab('reports')" class="px-4 py-2 rounded-lg font-medium transition-colors bg-blue-800 hover:bg-blue-600">דוח נוכחות</button>
                                 <button id="tab-students" onclick="switchTab('students')" class="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-blue-600">ניהול תלמידים</button>
+                                <button id="tab-vacations" onclick="switchTab('vacations')" class="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-blue-600">יומן חופשות</button>
                             </div>
                         </div>
                         <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold shadow transition-colors"><i class="fas fa-sign-out-alt ml-2"></i>התנתק</button>
@@ -121,20 +109,17 @@ export function getAdminHTML() {
                             <button onclick="changeWeek(1)" class="bg-white border hover:bg-gray-100 px-3 py-1.5 rounded text-sm shadow-sm transition-colors" title="שבוע הבא"><i class="fas fa-chevron-left"></i></button>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-bold shadow transition-colors"><i class="fas fa-print ml-2"></i>הדפס / שמור כ-PDF</button>
+                            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-bold shadow transition-colors"><i class="fas fa-print ml-2"></i>הדפס / שומר כ-PDF</button>
                             <button onclick="openEmailModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold shadow transition-colors"><i class="fas fa-envelope ml-2"></i>שלח במייל</button>
                         </div>
                     </div>
                     
-                    <div id="report-container">
-                        <div class="text-center text-gray-500 py-20 text-lg"><i class="fas fa-circle-notch fa-spin ml-2"></i>טוען נתונים...</div>
-                    </div>
+                    <div id="report-container"></div>
                 </div>
 
                 <!-- תצוגת תלמידים -->
                 <div id="students-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6 hidden print-hide">
-                    
-                    <!-- סרגל כלים (חיפוש, סינון, כפתור הוספה) -->
+                    <!-- ... קוד תצוגת תלמידים נשאר כשהיה ... -->
                     <div class="flex flex-wrap gap-4 items-center mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 justify-between">
                         <div class="flex flex-wrap gap-4 items-center w-full md:w-auto">
                             <div class="relative">
@@ -148,7 +133,6 @@ export function getAdminHTML() {
                         <button onclick="openModal('add')" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-bold shadow transition-colors"><i class="fas fa-plus ml-2"></i>הוסף תלמיד</button>
                     </div>
 
-                    <!-- פעולות מרובות (Bulk) -->
                     <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
                         <span class="font-bold text-gray-700 text-sm bg-gray-200 px-3 py-1 rounded-full"><i class="fas fa-layer-group ml-1"></i>פעולות מרובות</span>
                         <input type="text" id="bulk-class-input" placeholder="שם כיתה לעדכון" class="border px-4 py-2 rounded-lg w-48 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -167,11 +151,41 @@ export function getAdminHTML() {
                                     <th class="p-4 font-bold text-center">פעולות</th>
                                 </tr>
                             </thead>
-                            <tbody id="students-tbody">
-                                <!-- תלמידים ירונדרו כאן -->
-                            </tbody>
+                            <tbody id="students-tbody"></tbody>
                         </table>
                         <div id="no-students-msg" class="hidden text-center text-gray-500 py-10 font-medium">לא נמצאו תלמידים תואמים לחיפוש.</div>
+                    </div>
+                </div>
+
+                <!-- יומן חופשות חכם -->
+                <div id="vacations-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6 hidden print-hide">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800"><i class="far fa-calendar-check text-blue-600 ml-2"></i>ניהול ימי חופשה</h2>
+                        <div class="flex items-center gap-4 bg-gray-50 p-2 rounded-xl border">
+                            <button onclick="changeCalendarMonth(-1)" class="p-2 bg-white rounded shadow-sm hover:bg-gray-100 transition"><i class="fas fa-chevron-right text-gray-600"></i></button>
+                            <span id="cal-month-year" class="font-bold text-lg min-w-[120px] text-center text-gray-700"></span>
+                            <button onclick="changeCalendarMonth(1)" class="p-2 bg-white rounded shadow-sm hover:bg-gray-100 transition"><i class="fas fa-chevron-left text-gray-600"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full mx-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-700 border">
+                                    <th class="p-3 w-[14.28%] border font-bold">ראשון</th>
+                                    <th class="p-3 w-[14.28%] border font-bold">שני</th>
+                                    <th class="p-3 w-[14.28%] border font-bold">שלישי</th>
+                                    <th class="p-3 w-[14.28%] border font-bold">רביעי</th>
+                                    <th class="p-3 w-[14.28%] border font-bold">חמישי</th>
+                                    <th class="p-3 w-[14.28%] border font-bold">שישי</th>
+                                    <th class="p-3 w-[14.28%] border font-bold">שבת</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cal-body">
+                                <!-- תאי היומן ירונדרו כאן -->
+                            </tbody>
+                        </table>
+                        <p class="text-sm text-gray-500 mt-4 text-center"><i class="fas fa-info-circle ml-1"></i> לחץ על תאריך כדי להגדיר או לבטל יום חופש.</p>
                     </div>
                 </div>
 
@@ -184,6 +198,10 @@ export function getAdminHTML() {
             
             let currentMode = 'add';
             let allStudents = [];
+            
+            // משתנים עבור יומן החופשות
+            let calDate = new Date();
+            let allVacationDates = [];
 
             function checkAuth() {
                 if (!localStorage.getItem('admin_pass')) {
@@ -199,50 +217,24 @@ export function getAdminHTML() {
             async function login() {
                 const pass = document.getElementById('password-input').value;
                 if(!pass) return;
-                
                 try {
-                    const res = await fetch(API_BASE + '/login', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({password: pass})
-                    });
-                    
-                    if (res.ok) {
-                        localStorage.setItem('admin_pass', pass);
-                        checkAuth();
-                    } else {
-                        const data = await res.json();
-                        alert(data.error || 'שגיאת התחברות');
-                    }
-                } catch (e) {
-                    alert('שגיאת תקשורת עם השרת');
-                }
+                    const res = await fetch(API_BASE + '/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pass}) });
+                    if (res.ok) { localStorage.setItem('admin_pass', pass); checkAuth(); } 
+                    else { const data = await res.json(); alert(data.error || 'שגיאת התחברות'); }
+                } catch (e) { alert('שגיאת תקשורת עם השרת'); }
             }
 
-            function logout() {
-                localStorage.removeItem('admin_pass');
-                checkAuth();
-            }
+            function logout() { localStorage.removeItem('admin_pass'); checkAuth(); }
 
             async function apiCall(endpoint, method = 'GET', body = null) {
                 const pass = localStorage.getItem('admin_pass');
-                const options = {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Admin-Pass': pass
-                    }
-                };
+                const options = { method, headers: { 'Content-Type': 'application/json', 'X-Admin-Pass': pass } };
                 if (body) options.body = JSON.stringify(body);
                 
                 const res = await fetch(API_BASE + endpoint, options);
-                if (res.status === 401) {
-                    logout();
-                    throw new Error('Unauthorized');
-                }
+                if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
                 const isJson = res.headers.get('content-type')?.includes('application/json');
                 const data = isJson ? await res.json() : await res.text();
-                
                 if (!res.ok) throw new Error(data.error || 'API Error');
                 return data;
             }
@@ -250,16 +242,21 @@ export function getAdminHTML() {
             function switchTab(tab) {
                 document.getElementById('reports-view').classList.add('hidden');
                 document.getElementById('students-view').classList.add('hidden');
+                document.getElementById('vacations-view').classList.add('hidden');
                 
                 document.getElementById('tab-reports').classList.remove('bg-blue-800');
                 document.getElementById('tab-students').classList.remove('bg-blue-800');
+                document.getElementById('tab-vacations').classList.remove('bg-blue-800');
                 
                 document.getElementById(tab + '-view').classList.remove('hidden');
                 document.getElementById('tab-' + tab).classList.add('bg-blue-800');
                 
                 if (tab === 'reports') loadReports();
                 if (tab === 'students') loadStudents();
+                if (tab === 'vacations') loadVacations();
             }
+
+            // --- לוגיקת דוח נוכחות ---
 
             function changeWeek(offset) {
                 const dateInput = document.getElementById('report-date');
@@ -267,15 +264,6 @@ export function getAdminHTML() {
                 current.setDate(current.getDate() + (offset * 7));
                 dateInput.value = current.toISOString().split('T')[0];
                 loadReports();
-            }
-
-            async function toggleVacation(dateStr, isVacation) {
-                try {
-                    await apiCall('/toggle-vacation', 'POST', { date: dateStr, isVacation });
-                    loadReports();
-                } catch (e) {
-                    alert('שגיאה בעדכון יום חופש: ' + e.message);
-                }
             }
 
             async function loadReports() {
@@ -294,22 +282,19 @@ export function getAdminHTML() {
             function renderReportTable(data) {
                 let headersHTML = '';
                 let subHeadersHTML = '';
-                
                 const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
                 data.daysToShow.forEach(d => {
                     const isToday = d.dateStr === todayStr;
                     const isVacation = d.isVacation;
                     
-                    // צביעה אפורה מיוחדת ליום חופש
                     const bgClass = isVacation ? 'bg-gray-300' : (isToday ? 'bg-yellow-100' : 'bg-gray-100');
                     const textClass = isVacation ? 'text-gray-800' : (isToday ? 'text-yellow-800' : 'text-gray-700');
                     const todaySpan = isToday && !isVacation ? '<br><span class="text-xs text-yellow-600 font-normal">(היום)</span>' : '';
                     const vacSpan = isVacation ? '<br><span class="text-xs font-bold text-gray-700 mt-1 block">אין לימודים</span>' : '';
-                    const btnLabel = isVacation ? 'בטל חופש' : 'הגדר כחופש';
-                    const actionBtn = \`<br><button onclick="toggleVacation('\${d.dateStr}', \${!isVacation})" class="text-xs text-blue-600 hover:text-blue-800 print-hide mt-1 p-1 bg-white/50 rounded shadow-sm">\${btnLabel}</button>\`;
                     
-                    headersHTML += \`<th colspan="2" class="border-b border-l border-r p-3 text-center \${bgClass} \${textClass}">\${d.name}\${todaySpan}\${vacSpan}\${actionBtn}</th>\`;
+                    // הוסר כפתור "הגדר כחופש" מהטבלה כדי לשמור על עיצוב נקי
+                    headersHTML += \`<th colspan="2" class="border-b border-l border-r p-3 text-center \${bgClass} \${textClass}">\${d.name}\${todaySpan}\${vacSpan}</th>\`;
                     
                     const subBgClass = isVacation ? 'bg-gray-200' : 'bg-gray-50';
                     subHeadersHTML += \`
@@ -324,14 +309,12 @@ export function getAdminHTML() {
                     data.daysToShow.forEach(day => {
                         const isToday = day.dateStr === todayStr;
                         const isVacation = day.isVacation;
-                        
-                        // גם תאי הנתונים צבועים באפור בחופש
                         const cellBg = isVacation ? 'bg-gray-200' : (isToday ? 'bg-yellow-50/50' : 'bg-white');
                         const status = student.weeklyStatus[day.index];
                         
                         let timeContent = '';
-                        if (status.type === 'ok') timeContent = '<span class="text-green-600 font-bold text-lg">V</span>';
-                        else if (status.type === 'absence') timeContent = '<span class="text-red-600 font-bold text-2xl leading-none">-</span>';
+                        // אם אין חריגה (ok), לא מוצג "V". התא נשאר ריק לחלוטין.
+                        if (status.type === 'absence') timeContent = '<span class="text-red-600 font-bold text-2xl leading-none">-</span>';
                         else if (status.type === 'late') timeContent = \`<span class="text-orange-600 text-xs font-bold bg-orange-100 px-1 py-0.5 rounded">\${status.minutes} דק'</span>\`;
 
                         cells += \`
@@ -374,37 +357,133 @@ export function getAdminHTML() {
                 \`;
             }
 
+            // --- לוגיקת יומן חופשות ---
+
+            async function loadVacations() {
+                try {
+                    const data = await apiCall('/vacations');
+                    allVacationDates = data; // מערך של תאריכים
+                    renderCalendar();
+                } catch(e) {
+                    console.error('שגיאה בטעינת ימי חופשה:', e);
+                }
+            }
+
+            function changeCalendarMonth(offset) {
+                calDate.setMonth(calDate.getMonth() + offset);
+                renderCalendar();
+            }
+
+            function renderCalendar() {
+                const year = calDate.getFullYear();
+                const month = calDate.getMonth();
+                
+                const monthNames = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
+                document.getElementById('cal-month-year').innerText = monthNames[month] + ' ' + year;
+                
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                const tbody = document.getElementById('cal-body');
+                tbody.innerHTML = '';
+                
+                let date = 1;
+                // פורמט תאריך עברי טבעי שנתמך בכל הדפדפנים המודרניים
+                const hebFormatter = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long' });
+                
+                for (let i = 0; i < 6; i++) {
+                    let row = document.createElement('tr');
+                    for (let j = 0; j < 7; j++) {
+                        let cell = document.createElement('td');
+                        
+                        if (i === 0 && j < firstDay) {
+                            cell.className = 'border p-3 h-28 bg-gray-50';
+                        } else if (date > daysInMonth) {
+                            cell.className = 'border p-3 h-28 bg-gray-50';
+                        } else {
+                            const currentDate = new Date(year, month, date);
+                            // התאמת התאריך הלועזי לשרת (שמירת שעון ישראל)
+                            const dateStr = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(currentDate);
+                            const hebDateStr = hebFormatter.format(currentDate);
+                            
+                            const isVac = allVacationDates.includes(dateStr);
+                            
+                            cell.className = \`cal-cell border p-3 h-28 relative transition-colors cursor-pointer \${isVac ? 'bg-gray-300 hover:bg-gray-400' : 'bg-white hover:bg-blue-50'}\`;
+                            
+                            const numDiv = document.createElement('div');
+                            numDiv.className = \`font-bold text-xl \${isVac ? 'text-gray-800' : 'text-gray-800'}\`;
+                            numDiv.innerText = date;
+                            
+                            const hebDiv = document.createElement('div');
+                            hebDiv.className = \`text-sm mt-1 \${isVac ? 'text-gray-600 font-bold' : 'text-gray-500'}\`;
+                            hebDiv.innerText = hebDateStr;
+                            
+                            if (isVac) {
+                                const badge = document.createElement('div');
+                                badge.className = 'absolute bottom-2 left-2 right-2 bg-gray-600 text-white text-xs text-center py-1 rounded shadow-sm font-bold';
+                                badge.innerText = 'יום חופש';
+                                cell.appendChild(badge);
+                            }
+
+                            // אפקט Hover נעים
+                            const overlay = document.createElement('div');
+                            overlay.className = 'cal-overlay absolute inset-0 bg-black bg-opacity-10 hidden items-center justify-center font-bold text-sm text-gray-800 rounded shadow-inner';
+                            overlay.innerText = isVac ? 'בטל חופש' : 'הגדר כחופש';
+                            cell.appendChild(overlay);
+                            
+                            cell.onclick = () => toggleVacationInCalendar(dateStr, !isVac);
+                            
+                            cell.appendChild(numDiv);
+                            cell.appendChild(hebDiv);
+                            
+                            date++;
+                        }
+                        row.appendChild(cell);
+                    }
+                    tbody.appendChild(row);
+                    if (date > daysInMonth) break;
+                }
+            }
+
+            async function toggleVacationInCalendar(dateStr, isVacation) {
+                try {
+                    await apiCall('/toggle-vacation', 'POST', { date: dateStr, isVacation });
+                    if (isVacation) {
+                        allVacationDates.push(dateStr);
+                    } else {
+                        allVacationDates = allVacationDates.filter(d => d !== dateStr);
+                    }
+                    renderCalendar(); // רענון מהיר של היומן
+                } catch(e) {
+                    alert('שגיאה בהגדרת חופשה: ' + e.message);
+                }
+            }
+
+            // --- לוגיקת תלמידים והודעות למייל ... ---
+
             function openEmailModal() {
                 document.getElementById('email-modal').classList.remove('hidden');
                 document.getElementById('email-modal').classList.add('flex');
                 document.body.classList.add('modal-active');
             }
-            
             function closeEmailModal() {
                 document.getElementById('email-modal').classList.add('hidden');
                 document.getElementById('email-modal').classList.remove('flex');
                 document.body.classList.remove('modal-active');
             }
-
             async function sendEmail(btnElement) {
                 const emails = document.getElementById('report-emails').value.trim();
                 const dateVal = document.getElementById('report-date').value;
                 if (!emails) return alert('נא להזין לפחות כתובת אימייל אחת');
-                
                 const originalContent = btnElement.innerHTML;
                 btnElement.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>שולח...';
                 btnElement.disabled = true;
-
                 try {
                     const res = await apiCall(\`/send-email?email=\${encodeURIComponent(emails)}&date=\${dateVal}\`, 'POST');
                     alert(res.message || 'המייל נשלח בהצלחה!');
                     closeEmailModal();
-                } catch (e) {
-                    alert('שגיאה בשליחת המייל: ' + e.message);
-                } finally {
-                    btnElement.innerHTML = originalContent;
-                    btnElement.disabled = false;
-                }
+                } catch (e) { alert('שגיאה בשליחת המייל: ' + e.message); } 
+                finally { btnElement.innerHTML = originalContent; btnElement.disabled = false; }
             }
 
             async function loadStudents() {
@@ -413,9 +492,7 @@ export function getAdminHTML() {
                     allStudents = data.data; 
                     updateClassFilter();
                     renderStudents();
-                } catch(e) {
-                    alert('שגיאה בטעינת תלמידים');
-                }
+                } catch(e) { alert('שגיאה בטעינת תלמידים'); }
             }
 
             function updateClassFilter() {
@@ -434,16 +511,13 @@ export function getAdminHTML() {
                 tbody.innerHTML = '';
                 
                 const filtered = allStudents.filter(s => {
-                    const matchTerm = (s.first_name || '').toLowerCase().includes(term) || 
-                                      (s.last_name || '').toLowerCase().includes(term) || 
-                                      String(s.code).includes(term);
+                    const matchTerm = (s.first_name || '').toLowerCase().includes(term) || (s.last_name || '').toLowerCase().includes(term) || String(s.code).includes(term);
                     const matchCls = cls ? s.class_name === cls : true;
                     return matchTerm && matchCls;
                 });
 
-                if (filtered.length === 0) {
-                    emptyMsg.classList.remove('hidden');
-                } else {
+                if (filtered.length === 0) emptyMsg.classList.remove('hidden');
+                else {
                     emptyMsg.classList.add('hidden');
                     filtered.forEach(s => {
                         const safeClass = s.class_name ? s.class_name.replace(/'/g, "\\'") : '';
@@ -461,8 +535,7 @@ export function getAdminHTML() {
                                     <button onclick="openModal('edit', '\${s.code}', '\${safeFirst}', '\${safeLast}', '\${safeClass}')" class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded-full transition-colors mx-1" title="ערוך"><i class="fas fa-edit"></i></button>
                                     <button onclick="deleteStudent('\${s.code}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors mx-1" title="מחק"><i class="fas fa-trash"></i></button>
                                 </td>
-                            </tr>
-                        \`;
+                            </tr>\`;
                     });
                 }
             }
@@ -470,59 +543,30 @@ export function getAdminHTML() {
             function openModal(mode, code='', first='', last='', cls='') {
                 currentMode = mode;
                 document.getElementById('modal-title').innerText = mode === 'add' ? 'הוספת תלמיד חדש' : 'עריכת תלמיד';
-                document.getElementById('stu-code').value = code;
-                document.getElementById('stu-code').disabled = (mode === 'edit');
-                document.getElementById('stu-first').value = first;
-                document.getElementById('stu-last').value = last;
-                document.getElementById('stu-class').value = cls;
+                document.getElementById('stu-code').value = code; document.getElementById('stu-code').disabled = (mode === 'edit');
+                document.getElementById('stu-first').value = first; document.getElementById('stu-last').value = last; document.getElementById('stu-class').value = cls;
                 
-                document.getElementById('student-modal').classList.remove('hidden');
-                document.getElementById('student-modal').classList.add('flex');
-                document.body.classList.add('modal-active');
+                document.getElementById('student-modal').classList.remove('hidden'); document.getElementById('student-modal').classList.add('flex'); document.body.classList.add('modal-active');
             }
-
-            function closeModal() {
-                document.getElementById('student-modal').classList.add('hidden');
-                document.getElementById('student-modal').classList.remove('flex');
-                document.body.classList.remove('modal-active');
-            }
+            function closeModal() { document.getElementById('student-modal').classList.add('hidden'); document.getElementById('student-modal').classList.remove('flex'); document.body.classList.remove('modal-active'); }
 
             async function saveStudent() {
-                const code = document.getElementById('stu-code').value.trim();
-                const first_name = document.getElementById('stu-first').value.trim();
-                const last_name = document.getElementById('stu-last').value.trim();
-                const class_name = document.getElementById('stu-class').value.trim();
-                
+                const code = document.getElementById('stu-code').value.trim(); const first_name = document.getElementById('stu-first').value.trim();
+                const last_name = document.getElementById('stu-last').value.trim(); const class_name = document.getElementById('stu-class').value.trim();
                 if (!code || !first_name || !last_name) return alert('חובה להזין קוד, שם פרטי ושם משפחה');
                 
                 const endpoint = currentMode === 'add' ? '/add-student' : '/update-student';
-                
-                try {
-                    await apiCall(endpoint, 'POST', { code, first_name, last_name, class_name });
-                    closeModal();
-                    loadStudents();
-                } catch(e) {
-                    alert('שגיאה: ' + e.message);
-                }
+                try { await apiCall(endpoint, 'POST', { code, first_name, last_name, class_name }); closeModal(); loadStudents(); } catch(e) { alert('שגיאה: ' + e.message); }
             }
 
             async function deleteStudent(code) {
                 if(!confirm('האם אתה בטוח שברצונך למחוק תלמיד זה? כל דיווחי הנוכחות שלו יימחקו גם כן!')) return;
-                try {
-                    await apiCall('/delete-student', 'POST', { code });
-                    loadStudents();
-                } catch(e) {
-                    alert('שגיאה במחיקה: ' + e.message);
-                }
+                try { await apiCall('/delete-student', 'POST', { code }); loadStudents(); } catch(e) { alert('שגיאה במחיקה: ' + e.message); }
             }
 
             function toggleSelectAll() {
                 const isChecked = document.getElementById('cb-all').checked;
-                document.querySelectorAll('.student-cb').forEach(cb => {
-                    if (cb.closest('tr').style.display !== 'none') {
-                        cb.checked = isChecked;
-                    }
-                });
+                document.querySelectorAll('.student-cb').forEach(cb => { if (cb.closest('tr').style.display !== 'none') cb.checked = isChecked; });
             }
 
             async function applyBulkClass() {
@@ -532,18 +576,14 @@ export function getAdminHTML() {
                 
                 if (codes.length === 0) return alert('אנא סמן תלמידים בטבלה תחילה');
                 if (!newClass) return alert('אנא הזן את שם הכיתה החדש');
-                
                 if(!confirm(\`האם אתה בטוח שברצונך לשנות כיתה ל-\${codes.length} תלמידים?\`)) return;
 
                 try {
                     const res = await apiCall('/bulk-update-students', 'POST', { studentCodes: codes, className: newClass });
                     alert(res.message || 'עודכנו בהצלחה');
-                    document.getElementById('bulk-class-input').value = '';
-                    document.getElementById('cb-all').checked = false;
+                    document.getElementById('bulk-class-input').value = ''; document.getElementById('cb-all').checked = false;
                     loadStudents();
-                } catch(e) {
-                    alert('שגיאה בעדכון מרובה: ' + e.message);
-                }
+                } catch(e) { alert('שגיאה בעדכון מרובה: ' + e.message); }
             }
 
             window.onload = () => {
@@ -553,10 +593,7 @@ export function getAdminHTML() {
                 document.getElementById('report-date').value = dateStr;
                 
                 checkAuth();
-                
-                document.getElementById('password-input').addEventListener('keypress', function (e) {
-                    if (e.key === 'Enter') login();
-                });
+                document.getElementById('password-input').addEventListener('keypress', function (e) { if (e.key === 'Enter') login(); });
             };
         </script>
     </body>
