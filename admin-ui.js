@@ -20,6 +20,7 @@ export function getAdminHTML() {
                 .bg-yellow-100 { background-color: #FEF9C3 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .bg-yellow-50\\/50 { background-color: #FEFCE8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .bg-gray-200 { background-color: #E5E7EB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .bg-gray-300 { background-color: #D1D5DB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .bg-gray-50 { background-color: #F9FAFB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             }
         </style>
@@ -126,7 +127,6 @@ export function getAdminHTML() {
                     </div>
                     
                     <div id="report-container">
-                        <!-- הטבלה תרונדר כאן דינמית -->
                         <div class="text-center text-gray-500 py-20 text-lg"><i class="fas fa-circle-notch fa-spin ml-2"></i>טוען נתונים...</div>
                     </div>
                 </div>
@@ -185,7 +185,6 @@ export function getAdminHTML() {
             let currentMode = 'add';
             let allStudents = [];
 
-            // --- מערכת התחברות ואימות ---
             function checkAuth() {
                 if (!localStorage.getItem('admin_pass')) {
                     document.getElementById('login-screen').classList.remove('hidden');
@@ -248,7 +247,6 @@ export function getAdminHTML() {
                 return data;
             }
 
-            // --- ניווט וטאבים ---
             function switchTab(tab) {
                 document.getElementById('reports-view').classList.add('hidden');
                 document.getElementById('students-view').classList.add('hidden');
@@ -271,7 +269,15 @@ export function getAdminHTML() {
                 loadReports();
             }
 
-            // --- ניהול דוחות ---
+            async function toggleVacation(dateStr, isVacation) {
+                try {
+                    await apiCall('/toggle-vacation', 'POST', { date: dateStr, isVacation });
+                    loadReports();
+                } catch (e) {
+                    alert('שגיאה בעדכון יום חופש: ' + e.message);
+                }
+            }
+
             async function loadReports() {
                 try {
                     const dateVal = document.getElementById('report-date').value;
@@ -289,19 +295,26 @@ export function getAdminHTML() {
                 let headersHTML = '';
                 let subHeadersHTML = '';
                 
-                // לקיחת התאריך האמיתי של היום לפי שעון ישראל מהדפדפן
                 const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
                 data.daysToShow.forEach(d => {
                     const isToday = d.dateStr === todayStr;
-                    const bgClass = isToday ? 'bg-yellow-100' : 'bg-gray-100';
-                    const textClass = isToday ? 'text-yellow-800' : 'text-gray-700';
-                    const todaySpan = isToday ? '<br><span class="text-xs text-yellow-600 font-normal">(היום)</span>' : '';
+                    const isVacation = d.isVacation;
                     
-                    headersHTML += \`<th colspan="2" class="border-b border-l border-r p-3 text-center \${bgClass} \${textClass}">\${d.name}\${todaySpan}</th>\`;
+                    // צביעה אפורה מיוחדת ליום חופש
+                    const bgClass = isVacation ? 'bg-gray-300' : (isToday ? 'bg-yellow-100' : 'bg-gray-100');
+                    const textClass = isVacation ? 'text-gray-800' : (isToday ? 'text-yellow-800' : 'text-gray-700');
+                    const todaySpan = isToday && !isVacation ? '<br><span class="text-xs text-yellow-600 font-normal">(היום)</span>' : '';
+                    const vacSpan = isVacation ? '<br><span class="text-xs font-bold text-gray-700 mt-1 block">אין לימודים</span>' : '';
+                    const btnLabel = isVacation ? 'בטל חופש' : 'הגדר כחופש';
+                    const actionBtn = \`<br><button onclick="toggleVacation('\${d.dateStr}', \${!isVacation})" class="text-xs text-blue-600 hover:text-blue-800 print-hide mt-1 p-1 bg-white/50 rounded shadow-sm">\${btnLabel}</button>\`;
+                    
+                    headersHTML += \`<th colspan="2" class="border-b border-l border-r p-3 text-center \${bgClass} \${textClass}">\${d.name}\${todaySpan}\${vacSpan}\${actionBtn}</th>\`;
+                    
+                    const subBgClass = isVacation ? 'bg-gray-200' : 'bg-gray-50';
                     subHeadersHTML += \`
-                        <th class="border p-2 text-center text-sm font-normal text-gray-500 bg-gray-50 w-16">זמן</th>
-                        <th class="border p-2 text-center text-sm font-normal text-gray-500 bg-gray-50 w-16">התנהגות</th>
+                        <th class="border p-2 text-center text-sm font-normal text-gray-500 \${subBgClass} w-16">זמן</th>
+                        <th class="border p-2 text-center text-sm font-normal text-gray-500 \${subBgClass} w-16">התנהגות</th>
                     \`;
                 });
 
@@ -310,7 +323,10 @@ export function getAdminHTML() {
                     let cells = '';
                     data.daysToShow.forEach(day => {
                         const isToday = day.dateStr === todayStr;
-                        const cellBg = isToday ? 'bg-yellow-50/50' : 'bg-white';
+                        const isVacation = day.isVacation;
+                        
+                        // גם תאי הנתונים צבועים באפור בחופש
+                        const cellBg = isVacation ? 'bg-gray-200' : (isToday ? 'bg-yellow-50/50' : 'bg-white');
                         const status = student.weeklyStatus[day.index];
                         
                         let timeContent = '';
@@ -333,7 +349,6 @@ export function getAdminHTML() {
                     \`;
                 });
 
-                // ביטול הוספת "פרשת" מיותרת
                 const parashaText = data.parasha ? ' - ' + data.parasha : '';
                 const yearText = data.heYear ? ' ' + data.heYear : '';
                 
@@ -392,7 +407,6 @@ export function getAdminHTML() {
                 }
             }
 
-            // --- ניהול תלמידים ---
             async function loadStudents() {
                 try {
                     const data = await apiCall('/students');
@@ -453,7 +467,6 @@ export function getAdminHTML() {
                 }
             }
 
-            // --- מודל התלמידים (Modal) ---
             function openModal(mode, code='', first='', last='', cls='') {
                 currentMode = mode;
                 document.getElementById('modal-title').innerText = mode === 'add' ? 'הוספת תלמיד חדש' : 'עריכת תלמיד';
@@ -503,7 +516,6 @@ export function getAdminHTML() {
                 }
             }
 
-            // פעולות מרובות (Bulk)
             function toggleSelectAll() {
                 const isChecked = document.getElementById('cb-all').checked;
                 document.querySelectorAll('.student-cb').forEach(cb => {
