@@ -55,7 +55,6 @@ export async function getWeeklyData(env, targetDate) {
         "SELECT * FROM exceptions WHERE date >= ? AND date <= ?"
     ).bind(start, end).all();
 
-    // שליפת ימי החופש לאותו שבוע
     const { results: vacations } = await env.DB.prepare(
         "SELECT date FROM vacations WHERE date >= ? AND date <= ?"
     ).bind(start, end).all();
@@ -70,7 +69,6 @@ export async function getWeeklyData(env, targetDate) {
         const dateStr = currentDay.toISOString().split('T')[0];
         
         if (dateStr <= today) {
-            // צירוף המידע האם יום זה הוא חופש
             daysToShow.push({ 
                 index: i, 
                 name: dayNames[i], 
@@ -107,11 +105,12 @@ export async function getWeeklyData(env, targetDate) {
                     behaviorMark: behaviorMark
                 };
             } else {
+                // כאשר אין חריגה - התא יהיה חלק וריק לחלוטין
                 weeklyStatus[day.index] = { 
                     type: 'ok', 
                     minutes: null,
                     badBehavior: false,
-                    behaviorMark: 'א'
+                    behaviorMark: '' 
                 };
             }
         });
