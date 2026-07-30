@@ -49,7 +49,14 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
 
 export async function getWeeklyData(env, targetDate) {
     const { start, end } = getWeekRange(targetDate);
+    
+    // משיכת הזמן הנוכחי והשבוע הנוכחי האמיתי
     const today = getCurrentIsraelTime().date;
+    const { start: currentWeekStart } = getWeekRange(today);
+    
+    // זיהוי ברמת השרת איזה שבוע אנחנו מציגים עכשיו
+    const isCurrentWeek = (start === currentWeekStart);
+    const isFutureWeek = (start > currentWeekStart);
     
     const { parasha, heYear, hebDates } = await getWeeklyHebrewInfo(start);
     
@@ -69,7 +76,6 @@ export async function getWeeklyData(env, targetDate) {
     const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
     const daysToShow = [];
     
-    // הלולאה רצה על כל 6 הימים תמיד כדי לתמוך בשבועות עתידיים
     for (let i = 0; i <= 5; i++) {
         const currentDay = new Date(start);
         currentDay.setDate(currentDay.getDate() + i);
@@ -140,7 +146,16 @@ export async function getWeeklyData(env, targetDate) {
         };
     });
 
-    return { weekStart: start, weekEnd: end, parasha, heYear, daysToShow, report };
+    return { 
+        weekStart: start, 
+        weekEnd: end, 
+        parasha, 
+        heYear, 
+        isCurrentWeek, // פרמטר חדש ללקוח
+        isFutureWeek,  // פרמטר חדש ללקוח
+        daysToShow, 
+        report 
+    };
 }
 
 export async function handleReports(request, env) {
