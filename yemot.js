@@ -1,19 +1,12 @@
-import { getCurrentIsraelTime, isSaturday } from './utils.js';
+import { getCurrentIsraelTime, isSaturday, getWeekRange } from './utils.js';
 import { handleSendEmail } from './email.js';
+import { getWeeklyHebrewInfo } from './reports.js';
 
 async function getHebrewDateString(dateString) {
     try {
-        const response = await fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateString}&lg=h`);
-        const data = await response.json();
-        let parasha = "";
-        
-        if (data.events && data.events.length > 0) {
-            const parashaEvent = data.events.find(e => {
-                const cleanEvent = e.replace(/[\u0591-\u05C7]/g, ''); 
-                return cleanEvent.includes("פרשת");
-            });
-            if (parashaEvent) parasha = parashaEvent.replace(/[\u0591-\u05C7]/g, '');
-        }
+        // מביאים את תחילת השבוע (יום ראשון) ושולחים לפונקציה המשותפת
+        const { start } = getWeekRange(dateString);
+        const { parasha } = await getWeeklyHebrewInfo(start);
         
         const days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
         const dayName = days[new Date(dateString).getDay()];
@@ -201,7 +194,6 @@ export async function handleYemot(request, env) {
             }
         } else {
             if (isCancel) {
-                // שינוי מהותי: ביטלנו את התנאי AND type = ? כדי שיאפס כל בעיית נוכחות
                 await env.DB.prepare(`
                     UPDATE exceptions 
                     SET type = NULL, minutes = NULL 
