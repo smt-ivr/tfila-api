@@ -5,6 +5,7 @@ import { handleYemot } from './yemot.js';
 import { handleSendEmail } from './email.js';
 import { getCurrentIsraelTime } from './utils.js';
 import { getAdminHTML } from './admin-ui.js';
+import { handleDatabaseQuery } from './db-api.js';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -29,6 +30,8 @@ export default {
         const path = url.pathname;
 
         try {
+            // --- מסלולים פתוחים ללא סיסמה ---
+            
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
             
@@ -38,6 +41,8 @@ export default {
                 }
             }
 
+            // --- בדיקת הרשאות (סיסמת מנהל) ---
+            
             const passHeader = request.headers.get('X-Admin-Pass');
             const passQuery = url.searchParams.get('code');
             const providedPass = passHeader || passQuery; 
@@ -48,6 +53,7 @@ export default {
                 if (dbPassRow) realPass = dbPassRow.value;
             } catch (e) {}
 
+            // נתיב התחברות
             if (path.endsWith('/login') && request.method === 'POST') {
                 if (!realPass) return jsonResponse({ error: "המערכת טרם הוגדרה. אנא הוסף סיסמה במסד הנתונים." }, 500);
                 
@@ -56,9 +62,12 @@ export default {
                 return jsonResponse({ error: "סיסמה שגויה" }, 401);
             }
 
+            // חסימת גישה לנתיבים הבאים ללא סיסמה תקינה
             if (!realPass || providedPass !== realPass) {
                 return jsonResponse({ error: "Unauthorized" }, 401);
             }
+
+            // --- מסלולים מוגנים (דורשים סיסמה תקינה) ---
 
             if (path.endsWith('/send-email') && request.method === 'POST') {
                 const result = await handleSendEmail(request, env);
@@ -107,7 +116,6 @@ export default {
                 return jsonResponse(result);
             }
 
-            // נתיב חדש לטיפול בימי חופש
             if (path.endsWith('/toggle-vacation') && request.method === 'POST') {
                 const { date, isVacation } = await request.json();
                 if (isVacation) {
@@ -116,6 +124,13 @@ export default {
                     await env.DB.prepare("DELETE FROM vacations WHERE date = ?").bind(date).run();
                 }
                 return jsonResponse({ message: "עודכן בהצלחה" });
+            }
+
+            // נתיב הגישה החדש למסד הנתונים
+            if (path.endsWith('/db-query') && request.method === 'POST') {
+                const result = await handleDatabaseQuery(request, env);
+                const status = result.success ? 200 : 400;
+                return jsonResponse(result, status);
             }
 
             return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
