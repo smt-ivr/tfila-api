@@ -10,105 +10,143 @@ export function getAdminHTML() {
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
             body { font-family: system-ui, -apple-system, sans-serif; }
+            .modal-active { overflow: hidden; }
         </style>
     </head>
     <body class="bg-gray-100 min-h-screen">
 
         <!-- מסך התחברות -->
         <div id="login-screen" class="min-h-screen flex items-center justify-center hidden">
-            <div class="bg-white p-8 rounded-xl shadow-lg w-96 max-w-full">
-                <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">התחברות למערכת</h2>
-                <input type="password" id="password-input" placeholder="הכנס סיסמה" class="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:border-blue-500">
-                <button onclick="login()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-bold">היכנס</button>
+            <div class="bg-white p-8 rounded-xl shadow-2xl w-96 max-w-full">
+                <div class="text-center mb-6">
+                    <i class="fas fa-shield-alt text-4xl text-blue-600 mb-3"></i>
+                    <h2 class="text-2xl font-bold text-gray-800">התחברות למערכת</h2>
+                </div>
+                <input type="password" id="password-input" placeholder="הכנס סיסמה" class="w-full px-4 py-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg">
+                <button onclick="login()" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold transition-colors shadow-lg">היכנס</button>
+            </div>
+        </div>
+
+        <!-- מודל הוספה / עריכת תלמיד -->
+        <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 transition-opacity">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="modal-title" class="text-xl font-bold text-gray-800">הוספת תלמיד חדש</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">קוד אישי (מספר)</label>
+                        <input type="number" id="stu-code" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">שם פרטי</label>
+                            <input type="text" id="stu-first" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">משפחה</label>
+                            <input type="text" id="stu-last" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">כיתה</label>
+                        <input type="text" id="stu-class" class="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end gap-3">
+                    <button onclick="closeModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold transition-colors">ביטול</button>
+                    <button onclick="saveStudent()" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold transition-colors shadow">שמור תלמיד</button>
+                </div>
             </div>
         </div>
 
         <!-- המסך הראשי -->
         <div id="app-screen" class="hidden">
             <!-- סרגל ניווט -->
-            <nav class="bg-blue-700 text-white shadow-md">
+            <nav class="bg-blue-700 text-white shadow-md sticky top-0 z-40">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex items-center justify-between h-16">
                         <div class="flex items-center">
-                            <span class="text-xl font-bold">פאנל ניהול נוכחות</span>
-                            <div class="mr-10 flex space-x-reverse space-x-4">
-                                <button id="tab-reports" onclick="switchTab('reports')" class="px-3 py-2 rounded-md font-medium bg-blue-800">דוח נוכחות</button>
-                                <button id="tab-students" onclick="switchTab('students')" class="px-3 py-2 rounded-md font-medium hover:bg-blue-600">ניהול תלמידים</button>
+                            <span class="text-xl font-bold ml-8"><i class="fas fa-graduation-cap ml-2"></i>ניהול נוכחות</span>
+                            <div class="flex space-x-reverse space-x-2">
+                                <button id="tab-reports" onclick="switchTab('reports')" class="px-4 py-2 rounded-lg font-medium transition-colors bg-blue-800">דוח נוכחות</button>
+                                <button id="tab-students" onclick="switchTab('students')" class="px-4 py-2 rounded-lg font-medium transition-colors hover:bg-blue-600">ניהול תלמידים</button>
                             </div>
                         </div>
-                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold shadow"><i class="fas fa-sign-out-alt ml-2"></i>התנתק</button>
+                        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold shadow transition-colors"><i class="fas fa-sign-out-alt ml-2"></i>התנתק</button>
                     </div>
                 </div>
             </nav>
 
-            <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 
                 <!-- תצוגת דוחות -->
-                <div id="reports-view" class="bg-white rounded-xl shadow px-6 py-6">
-                    <div class="flex flex-wrap gap-4 items-end mb-6 bg-gray-50 p-4 rounded-lg border">
+                <div id="reports-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6">
+                    <div class="flex flex-wrap gap-4 items-end mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 justify-between">
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">בחר תאריך בשבוע המבוקש:</label>
-                            <input type="date" id="report-date" onchange="loadReports()" class="border px-4 py-2 rounded-lg w-48">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">צפייה לפי שבוע / תאריך:</label>
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="report-date" onchange="loadReports()" class="border px-4 py-2 rounded-lg w-48 focus:ring-2 focus:ring-blue-500 outline-none">
+                                <button onclick="changeWeek(-1)" class="bg-white border hover:bg-gray-100 px-4 py-2 rounded-lg text-sm text-gray-700 shadow-sm font-medium transition-colors" title="שבוע קודם"><i class="fas fa-chevron-right ml-1"></i>הקודם</button>
+                                <button onclick="changeWeek(1)" class="bg-white border hover:bg-gray-100 px-4 py-2 rounded-lg text-sm text-gray-700 shadow-sm font-medium transition-colors" title="שבוע הבא">הבא<i class="fas fa-chevron-left mr-1"></i></button>
+                            </div>
+                            <button onclick="copyApiLink()" class="text-xs text-blue-600 hover:text-blue-800 font-medium mt-2 flex items-center">
+                                <i class="fas fa-link ml-1"></i>העתק קישור API לשבוע זה
+                            </button>
                         </div>
-                        <div class="mr-auto flex gap-2">
-                            <input type="text" id="report-emails" placeholder="אימייל לשליחה (מופרד בפסיק)" class="border px-4 py-2 rounded-lg w-64 text-left" dir="ltr">
-                            <button onclick="sendEmail()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold"><i class="fas fa-paper-plane ml-2"></i>שלח אימייל</button>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <input type="text" id="report-emails" placeholder="אימייל לשליחה..." class="border px-4 py-2 rounded-lg w-64 text-left focus:ring-2 focus:ring-blue-500 outline-none" dir="ltr">
+                            <button onclick="sendEmail()" class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 font-bold shadow transition-colors"><i class="fas fa-paper-plane ml-2"></i>שלח</button>
                         </div>
                     </div>
                     <div id="report-container">
                         <!-- הטבלה תרונדר כאן דינמית -->
-                        <div class="text-center text-gray-500 py-10">טוען נתונים...</div>
+                        <div class="text-center text-gray-500 py-20 text-lg"><i class="fas fa-circle-notch fa-spin ml-2"></i>טוען נתונים...</div>
                     </div>
                 </div>
 
                 <!-- תצוגת תלמידים -->
-                <div id="students-view" class="bg-white rounded-xl shadow px-6 py-6 hidden">
+                <div id="students-view" class="bg-white rounded-2xl shadow-sm border px-6 py-6 hidden">
                     
-                    <!-- טופס הוספה/עריכה -->
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6 flex flex-wrap gap-3 items-end">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">קוד אישי</label>
-                            <input type="text" id="stu-code" class="border px-3 py-1.5 rounded w-24">
+                    <!-- סרגל כלים (חיפוש, סינון, כפתור הוספה) -->
+                    <div class="flex flex-wrap gap-4 items-center mb-6 bg-gray-50 p-5 rounded-xl border border-gray-100 justify-between">
+                        <div class="flex flex-wrap gap-4 items-center w-full md:w-auto">
+                            <div class="relative">
+                                <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+                                <input type="text" id="search-student" oninput="renderStudents()" placeholder="חיפוש לפי שם או קוד..." class="border pl-4 pr-10 py-2 rounded-lg w-64 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <select id="filter-class" onchange="renderStudents()" class="border px-4 py-2 rounded-lg min-w-[120px] focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                                <option value="">כל הכיתות</option>
+                            </select>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">שם פרטי</label>
-                            <input type="text" id="stu-first" class="border px-3 py-1.5 rounded w-32">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">משפחה</label>
-                            <input type="text" id="stu-last" class="border px-3 py-1.5 rounded w-32">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">כיתה</label>
-                            <input type="text" id="stu-class" class="border px-3 py-1.5 rounded w-24">
-                        </div>
-                        <button onclick="saveStudent()" class="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold h-9">שמור</button>
-                        <button onclick="clearForm()" class="bg-gray-400 text-white px-4 py-1.5 rounded hover:bg-gray-500 font-bold h-9 mr-auto">נקה</button>
+                        <button onclick="openModal('add')" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-bold shadow transition-colors"><i class="fas fa-plus ml-2"></i>הוסף תלמיד</button>
                     </div>
 
                     <!-- פעולות מרובות (Bulk) -->
-                    <div class="flex items-center gap-4 mb-4 pb-4 border-b">
-                        <span class="font-bold text-gray-700">פעולות מרובות:</span>
-                        <input type="text" id="bulk-class-input" placeholder="הכנס שם כיתה לשינוי" class="border px-3 py-1.5 rounded w-48 text-sm">
-                        <button onclick="applyBulkClass()" class="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 text-sm font-bold">שנה כיתה למסומנים</button>
+                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+                        <span class="font-bold text-gray-700 text-sm bg-gray-200 px-3 py-1 rounded-full"><i class="fas fa-layer-group ml-1"></i>פעולות מרובות</span>
+                        <input type="text" id="bulk-class-input" placeholder="שם כיתה לעדכון" class="border px-4 py-2 rounded-lg w-48 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <button onclick="applyBulkClass()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 text-sm font-bold shadow transition-colors">החל על המסומנים</button>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto rounded-lg border">
                         <table class="w-full text-right border-collapse">
                             <thead>
-                                <tr class="bg-gray-100 text-gray-700">
-                                    <th class="border-b p-3 w-10"><input type="checkbox" id="cb-all" onclick="toggleSelectAll()" class="w-4 h-4"></th>
-                                    <th class="border-b p-3">קוד</th>
-                                    <th class="border-b p-3">שם פרטי</th>
-                                    <th class="border-b p-3">משפחה</th>
-                                    <th class="border-b p-3">כיתה</th>
-                                    <th class="border-b p-3">פעולות</th>
+                                <tr class="bg-gray-100 text-gray-700 border-b">
+                                    <th class="p-4 w-10 text-center"><input type="checkbox" id="cb-all" onclick="toggleSelectAll()" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"></th>
+                                    <th class="p-4 font-bold">קוד</th>
+                                    <th class="p-4 font-bold">שם פרטי</th>
+                                    <th class="p-4 font-bold">משפחה</th>
+                                    <th class="p-4 font-bold">כיתה</th>
+                                    <th class="p-4 font-bold text-center">פעולות</th>
                                 </tr>
                             </thead>
                             <tbody id="students-tbody">
                                 <!-- תלמידים ירונדרו כאן -->
                             </tbody>
                         </table>
+                        <div id="no-students-msg" class="hidden text-center text-gray-500 py-10 font-medium">לא נמצאו תלמידים תואמים לחיפוש.</div>
                     </div>
                 </div>
 
@@ -116,11 +154,11 @@ export function getAdminHTML() {
         </div>
 
         <script>
-            // זיהוי נתיב ה-API באופן אוטומטי (למקרה שהמערכת רצה תחת /tfila/)
             const basePath = window.location.pathname.endsWith('/') ? window.location.pathname.slice(0, -1) : window.location.pathname;
             const API_BASE = basePath.includes('/tfila') ? '/tfila' : '';
             
-            let currentMode = 'add'; // 'add' or 'edit'
+            let currentMode = 'add';
+            let allStudents = [];
 
             // --- מערכת התחברות ואימות ---
             function checkAuth() {
@@ -149,10 +187,11 @@ export function getAdminHTML() {
                         localStorage.setItem('admin_pass', pass);
                         checkAuth();
                     } else {
-                        alert('סיסמה שגויה או שגיאת שרת');
+                        const data = await res.json();
+                        alert(data.error || 'שגיאת התחברות');
                     }
                 } catch (e) {
-                    alert('שגיאת התחברות');
+                    alert('שגיאת תקשורת עם השרת');
                 }
             }
 
@@ -161,7 +200,6 @@ export function getAdminHTML() {
                 checkAuth();
             }
 
-            // פונקצית מעטפת לבקשות API שמוסיפה את הסיסמה בהדר
             async function apiCall(endpoint, method = 'GET', body = null) {
                 const pass = localStorage.getItem('admin_pass');
                 const options = {
@@ -181,13 +219,22 @@ export function getAdminHTML() {
                 const isJson = res.headers.get('content-type')?.includes('application/json');
                 const data = isJson ? await res.json() : await res.text();
                 
-                if (!res.ok) {
-                    throw new Error(data.error || 'API Error');
-                }
+                if (!res.ok) throw new Error(data.error || 'API Error');
                 return data;
             }
 
-            // --- ניווט טאבים ---
+            function copyApiLink() {
+                const dateVal = document.getElementById('report-date').value;
+                const pass = localStorage.getItem('admin_pass');
+                const url = new URL(window.location.origin + API_BASE + '/reports');
+                if (dateVal) url.searchParams.set('date', dateVal);
+                url.searchParams.set('code', pass);
+                
+                navigator.clipboard.writeText(url.toString());
+                alert('הקישור הועתק! ניתן להשתמש בו ישירות בדפדפן או כ-API.');
+            }
+
+            // --- ניווט וטאבים ---
             function switchTab(tab) {
                 document.getElementById('reports-view').classList.add('hidden');
                 document.getElementById('students-view').classList.add('hidden');
@@ -202,15 +249,25 @@ export function getAdminHTML() {
                 if (tab === 'students') loadStudents();
             }
 
-            // --- ניהול דוחות (טבלה דינמית) ---
+            function changeWeek(offset) {
+                const dateInput = document.getElementById('report-date');
+                const current = new Date(dateInput.value || new Date());
+                current.setDate(current.getDate() + (offset * 7));
+                dateInput.value = current.toISOString().split('T')[0];
+                loadReports();
+            }
+
+            // --- ניהול דוחות ---
             async function loadReports() {
                 try {
                     const dateVal = document.getElementById('report-date').value;
                     const endpoint = dateVal ? '/reports?date=' + dateVal : '/reports';
+                    document.getElementById('report-container').innerHTML = '<div class="text-center text-blue-500 py-20 text-lg"><i class="fas fa-circle-notch fa-spin ml-2"></i>טוען נתונים...</div>';
+                    
                     const data = await apiCall(endpoint);
                     renderReportTable(data, dateVal);
                 } catch (e) {
-                    document.getElementById('report-container').innerHTML = '<div class="text-red-500 font-bold p-4 text-center">שגיאה בטעינת נתונים</div>';
+                    document.getElementById('report-container').innerHTML = '<div class="text-red-500 font-bold p-4 text-center text-lg">שגיאה בטעינת נתונים</div>';
                 }
             }
 
@@ -220,14 +277,14 @@ export function getAdminHTML() {
                 
                 data.daysToShow.forEach(d => {
                     const isToday = d.dateStr === currentDateStr;
-                    const bgClass = isToday ? 'bg-yellow-200' : 'bg-gray-100';
-                    const todaySpan = isToday ? '<br><span class="text-xs text-yellow-700">(היום)</span>' : '';
-                    headersHTML += \`<th colspan="2" class="border p-2 text-center text-gray-700 \${bgClass}">\${d.name}\${todaySpan}</th>\`;
+                    const bgClass = isToday ? 'bg-yellow-100' : 'bg-gray-100';
+                    const textClass = isToday ? 'text-yellow-800' : 'text-gray-700';
+                    const todaySpan = isToday ? '<br><span class="text-xs text-yellow-600 font-normal">(היום)</span>' : '';
                     
-                    const subBgClass = isToday ? 'bg-yellow-100' : 'bg-gray-50';
+                    headersHTML += \`<th colspan="2" class="border-b border-l border-r p-3 text-center \${bgClass} \${textClass}">\${d.name}\${todaySpan}</th>\`;
                     subHeadersHTML += \`
-                        <th class="border p-1 text-center text-sm font-normal text-gray-600 \${subBgClass}">זמן</th>
-                        <th class="border p-1 text-center text-sm font-normal text-gray-600 \${subBgClass}">התנהגות</th>
+                        <th class="border p-2 text-center text-sm font-normal text-gray-500 bg-gray-50 w-16">זמן</th>
+                        <th class="border p-2 text-center text-sm font-normal text-gray-500 bg-gray-50 w-16">התנהגות</th>
                     \`;
                 });
 
@@ -236,43 +293,44 @@ export function getAdminHTML() {
                     let cells = '';
                     data.daysToShow.forEach(day => {
                         const isToday = day.dateStr === currentDateStr;
-                        const cellBg = isToday ? 'bg-yellow-50' : 'bg-white';
+                        const cellBg = isToday ? 'bg-yellow-50/50' : 'bg-white';
                         const status = student.weeklyStatus[day.index];
                         
                         let timeContent = '';
                         if (status.type === 'ok') timeContent = '<span class="text-green-600 font-bold text-lg">V</span>';
                         else if (status.type === 'absence') timeContent = '<span class="text-red-600 font-bold text-2xl leading-none">-</span>';
-                        else if (status.type === 'late') timeContent = \`<span class="text-orange-600 text-sm font-bold">\${status.minutes} דק'</span>\`;
+                        else if (status.type === 'late') timeContent = \`<span class="text-orange-600 text-xs font-bold bg-orange-100 px-1 py-0.5 rounded">\${status.minutes} דק'</span>\`;
 
                         cells += \`
                             <td class="border p-2 text-center align-middle \${cellBg}">\${timeContent}</td>
-                            <td class="border p-2 text-center align-middle font-bold text-lg \${cellBg}">\${status.behaviorMark}</td>
+                            <td class="border p-2 text-center align-middle font-bold text-lg \${cellBg} \${status.behaviorMark === 'ב' ? 'text-red-500' : 'text-gray-700'}">\${status.behaviorMark}</td>
                         \`;
                     });
                     rowsHTML += \`
-                        <tr class="hover:bg-blue-50 transition-colors">
-                            <td class="border p-2 font-bold text-gray-800">\${student.first_name}</td>
-                            <td class="border p-2 font-bold text-gray-800">\${student.last_name}</td>
-                            <td class="border p-2 text-gray-600 text-center">\${student.class_name || ''}</td>
+                        <tr class="hover:bg-blue-50/50 transition-colors">
+                            <td class="border p-3 font-bold text-gray-800 whitespace-nowrap">\${student.first_name}</td>
+                            <td class="border p-3 font-bold text-gray-800 whitespace-nowrap">\${student.last_name}</td>
+                            <td class="border p-3 text-gray-600 text-center">\${student.class_name || ''}</td>
                             \${cells}
                         </tr>
                     \`;
                 });
 
-                const parashaText = data.parasha ? ' - ' + data.parasha : '';
+                const parashaText = data.parasha ? ' - פרשת ' + data.parasha : '';
                 const yearText = data.heYear ? ' ' + data.heYear : '';
                 
                 document.getElementById('report-container').innerHTML = \`
-                    <h2 class="text-2xl font-bold mb-4 text-center text-gray-800">
+                    <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 flex items-center justify-center gap-2">
+                        <i class="far fa-calendar-alt text-blue-600"></i>
                         דוח נוכחות שבועי\${parashaText}\${yearText}
                     </h2>
-                    <div class="overflow-x-auto border rounded-lg">
+                    <div class="overflow-x-auto rounded-xl border border-gray-200">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" class="border p-3 bg-gray-200 text-gray-800 font-bold">שם פרטי</th>
-                                    <th rowspan="2" class="border p-3 bg-gray-200 text-gray-800 font-bold">משפחה</th>
-                                    <th rowspan="2" class="border p-3 bg-gray-200 text-gray-800 font-bold">כיתה</th>
+                                    <th rowspan="2" class="border p-4 bg-gray-200 text-gray-800 font-bold w-32">שם פרטי</th>
+                                    <th rowspan="2" class="border p-4 bg-gray-200 text-gray-800 font-bold w-32">משפחה</th>
+                                    <th rowspan="2" class="border p-4 bg-gray-200 text-gray-800 font-bold w-20">כיתה</th>
                                     \${headersHTML}
                                 </tr>
                                 <tr>\${subHeadersHTML}</tr>
@@ -288,11 +346,18 @@ export function getAdminHTML() {
                 const dateVal = document.getElementById('report-date').value;
                 if (!emails) return alert('נא להזין לפחות כתובת אימייל אחת');
                 
+                const btn = event.currentTarget;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i>שולח...';
+                btn.disabled = true;
+
                 try {
                     const res = await apiCall(\`/send-email?email=\${encodeURIComponent(emails)}&date=\${dateVal}\`, 'POST');
                     alert(res.message || 'המייל נשלח בהצלחה!');
                 } catch (e) {
                     alert('שגיאה בשליחת המייל: ' + e.message);
+                } finally {
+                    btn.innerHTML = '<i class="fas fa-paper-plane ml-2"></i>שלח';
+                    btn.disabled = false;
                 }
             }
 
@@ -300,49 +365,82 @@ export function getAdminHTML() {
             async function loadStudents() {
                 try {
                     const data = await apiCall('/students');
-                    const tbody = document.getElementById('students-tbody');
-                    tbody.innerHTML = '';
-                    
-                    data.data.forEach(s => {
-                        const safeClass = s.class_name ? s.class_name.replace(/'/g, "\\'") : '';
-                        const safeFirst = s.first_name ? s.first_name.replace(/'/g, "\\'") : '';
-                        const safeLast = s.last_name ? s.last_name.replace(/'/g, "\\'") : '';
-                        
-                        tbody.innerHTML += \`
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="p-3 text-center"><input type="checkbox" class="student-cb w-4 h-4 cursor-pointer" value="\${s.code}"></td>
-                                <td class="p-3 font-mono text-gray-600">\${s.code}</td>
-                                <td class="p-3 font-bold">\${s.first_name}</td>
-                                <td class="p-3 font-bold">\${s.last_name}</td>
-                                <td class="p-3">\${s.class_name || ''}</td>
-                                <td class="p-3">
-                                    <button onclick="editStudent('\${s.code}', '\${safeFirst}', '\${safeLast}', '\${safeClass}')" class="text-blue-600 hover:text-blue-800 ml-4 p-1"><i class="fas fa-edit"></i></button>
-                                    <button onclick="deleteStudent('\${s.code}')" class="text-red-600 hover:text-red-800 p-1"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        \`;
-                    });
+                    allStudents = data.data; // השמירה בזיכרון המקומי לסינון
+                    updateClassFilter();
+                    renderStudents();
                 } catch(e) {
                     alert('שגיאה בטעינת תלמידים');
                 }
             }
 
-            function clearForm() {
-                document.getElementById('stu-code').value = '';
-                document.getElementById('stu-code').disabled = false;
-                document.getElementById('stu-first').value = '';
-                document.getElementById('stu-last').value = '';
-                document.getElementById('stu-class').value = '';
-                currentMode = 'add';
+            function updateClassFilter() {
+                const classes = [...new Set(allStudents.map(s => s.class_name).filter(Boolean))].sort();
+                const select = document.getElementById('filter-class');
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">כל הכיתות</option>' + classes.map(c => \`<option value="\${c}">\${c}</option>\`).join('');
+                select.value = currentVal;
             }
 
-            function editStudent(code, first, last, cls) {
+            function renderStudents() {
+                const term = document.getElementById('search-student').value.toLowerCase();
+                const cls = document.getElementById('filter-class').value;
+                const tbody = document.getElementById('students-tbody');
+                const emptyMsg = document.getElementById('no-students-msg');
+                tbody.innerHTML = '';
+                
+                const filtered = allStudents.filter(s => {
+                    const matchTerm = (s.first_name || '').toLowerCase().includes(term) || 
+                                      (s.last_name || '').toLowerCase().includes(term) || 
+                                      String(s.code).includes(term);
+                    const matchCls = cls ? s.class_name === cls : true;
+                    return matchTerm && matchCls;
+                });
+
+                if (filtered.length === 0) {
+                    emptyMsg.classList.remove('hidden');
+                } else {
+                    emptyMsg.classList.add('hidden');
+                    filtered.forEach(s => {
+                        const safeClass = s.class_name ? s.class_name.replace(/'/g, "\\'") : '';
+                        const safeFirst = s.first_name ? s.first_name.replace(/'/g, "\\'") : '';
+                        const safeLast = s.last_name ? s.last_name.replace(/'/g, "\\'") : '';
+                        
+                        tbody.innerHTML += \`
+                            <tr class="border-b hover:bg-gray-50 transition-colors">
+                                <td class="p-4 text-center"><input type="checkbox" class="student-cb w-4 h-4 rounded text-blue-600 cursor-pointer" value="\${s.code}"></td>
+                                <td class="p-4 font-mono text-gray-500 font-medium">\${s.code}</td>
+                                <td class="p-4 font-bold text-gray-800">\${s.first_name}</td>
+                                <td class="p-4 font-bold text-gray-800">\${s.last_name}</td>
+                                <td class="p-4"><span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">\${s.class_name || '-'}</span></td>
+                                <td class="p-4 text-center">
+                                    <button onclick="openModal('edit', '\${s.code}', '\${safeFirst}', '\${safeLast}', '\${safeClass}')" class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded-full transition-colors mx-1" title="ערוך"><i class="fas fa-edit"></i></button>
+                                    <button onclick="deleteStudent('\${s.code}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors mx-1" title="מחק"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        \`;
+                    });
+                }
+            }
+
+            // --- מודל התלמידים (Modal) ---
+            function openModal(mode, code='', first='', last='', cls='') {
+                currentMode = mode;
+                document.getElementById('modal-title').innerText = mode === 'add' ? 'הוספת תלמיד חדש' : 'עריכת תלמיד';
                 document.getElementById('stu-code').value = code;
-                document.getElementById('stu-code').disabled = true; // הקוד לא ניתן לשינוי
+                document.getElementById('stu-code').disabled = (mode === 'edit');
                 document.getElementById('stu-first').value = first;
                 document.getElementById('stu-last').value = last;
                 document.getElementById('stu-class').value = cls;
-                currentMode = 'edit';
+                
+                document.getElementById('student-modal').classList.remove('hidden');
+                document.getElementById('student-modal').classList.add('flex');
+                document.body.classList.add('modal-active');
+            }
+
+            function closeModal() {
+                document.getElementById('student-modal').classList.add('hidden');
+                document.getElementById('student-modal').classList.remove('flex');
+                document.body.classList.remove('modal-active');
             }
 
             async function saveStudent() {
@@ -357,7 +455,7 @@ export function getAdminHTML() {
                 
                 try {
                     await apiCall(endpoint, 'POST', { code, first_name, last_name, class_name });
-                    clearForm();
+                    closeModal();
                     loadStudents();
                 } catch(e) {
                     alert('שגיאה: ' + e.message);
@@ -377,7 +475,12 @@ export function getAdminHTML() {
             // פעולות מרובות (Bulk)
             function toggleSelectAll() {
                 const isChecked = document.getElementById('cb-all').checked;
-                document.querySelectorAll('.student-cb').forEach(cb => cb.checked = isChecked);
+                document.querySelectorAll('.student-cb').forEach(cb => {
+                    // סמן רק אם השורה מוצגת כרגע (בזמן סינון)
+                    if (cb.closest('tr').style.display !== 'none') {
+                        cb.checked = isChecked;
+                    }
+                });
             }
 
             async function applyBulkClass() {
@@ -410,7 +513,6 @@ export function getAdminHTML() {
                 
                 checkAuth();
                 
-                // הוספת לחיצה על אנטר בהתחברות
                 document.getElementById('password-input').addEventListener('keypress', function (e) {
                     if (e.key === 'Enter') login();
                 });
