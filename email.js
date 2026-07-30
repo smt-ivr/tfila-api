@@ -4,17 +4,16 @@ import { getCurrentIsraelTime } from './utils.js';
 export async function handleSendEmail(request, env) {
     const url = new URL(request.url);
     
-    // איסוף כל הפרמטרים שמתחילים במילה email (כגון email, email1, email2)
+    // איסוף כל הפרמטרים שמתחילים במילה email
     const emailsArray = [];
     for (const [key, value] of url.searchParams.entries()) {
         if (key.toLowerCase().startsWith('email') && value.trim() !== '') {
-            // במקרה שעדיין ישחילו פסיק איכשהו, נפריד ונוסיף
             const parts = value.split(',').map(e => e.trim()).filter(e => e.length > 0);
             emailsArray.push(...parts);
         }
     }
     
-    // סינון כפילויות (אם נשלח אותו מייל פעמיים בטעות)
+    // סינון כפילויות
     const uniqueEmails = [...new Set(emailsArray)];
     
     if (uniqueEmails.length === 0) {
@@ -22,9 +21,12 @@ export async function handleSendEmail(request, env) {
     }
 
     const current = getCurrentIsraelTime();
-    const data = await getWeeklyData(env, current.date);
     
-    const htmlContent = buildEmailHTML(data, current.date);
+    // לקיחת תאריך ספציפי מהכתובת כדי לאפשר לשלוח מייל משבועות קודמים, אם אין אז היום הנוכחי
+    const dateParam = url.searchParams.get('date') || current.date;
+    
+    const data = await getWeeklyData(env, dateParam);
+    const htmlContent = buildEmailHTML(data, dateParam);
 
     const parashaText = data.parasha ? ` - ${data.parasha}` : '';
     const yearText = data.heYear ? ` ${data.heYear}` : '';
