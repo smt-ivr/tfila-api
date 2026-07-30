@@ -31,8 +31,9 @@ export async function getWeeklyData(env, targetDate) {
     
     const { parasha, heYear } = await getWeeklyHebrewInfo(start);
     
+    // סידור התלמידים מספרית לפי הקוד
     const { results: students } = await env.DB.prepare(
-        "SELECT * FROM students ORDER BY class_name, last_name, first_name"
+        "SELECT * FROM students ORDER BY CAST(code AS INTEGER), class_name, first_name"
     ).all();
     
     const { results: exceptions } = await env.DB.prepare(
@@ -47,25 +48,19 @@ export async function getWeeklyData(env, targetDate) {
         currentDay.setDate(currentDay.getDate() + i);
         const dateStr = currentDay.toISOString().split('T')[0];
         
+        // הצגת ימים רק אם הם קטנים או שווים לזמן האמיתי של השרת
         if (dateStr <= today) {
             daysToShow.push({ index: i, name: dayNames[i], dateStr });
         }
-    }
-    
-    if (daysToShow.length === 0) {
-        for (let i = 0; i <= 5; i++) daysToShow.push({ index: i, name: dayNames[i] });
     }
 
     const report = students.map(student => {
         const studentExceptions = exceptions.filter(e => e.student_code === student.code);
         const weeklyStatus = {};
         
-        for (let i = 0; i <= 5; i++) {
-            const currentDay = new Date(start);
-            currentDay.setDate(currentDay.getDate() + i);
-            const dateStr = currentDay.toISOString().split('T')[0];
-            
-            const exceptionToday = studentExceptions.find(e => e.date === dateStr);
+        // עוברים רק על הימים שבאמת קיימים / עברו
+        daysToShow.forEach(day => {
+            const exceptionToday = studentExceptions.find(e => e.date === day.dateStr);
             
             if (exceptionToday) {
                 const type = exceptionToday.type || 'ok';
@@ -75,26 +70,27 @@ export async function getWeeklyData(env, targetDate) {
                 if (badBehavior) {
                     behaviorMark = 'ב';
                 } else if (type === 'ok' || type === 'late') {
-                    behaviorMark = 'א'; // באיחור עדיין מקבלים א' בהתנהגות
+                    behaviorMark = 'א'; 
                 } else if (type === 'absence') {
-                    behaviorMark = '';  // בחיסור המשבצת תישאר ריקה
+                    behaviorMark = '';  
                 }
 
-                weeklyStatus[i] = { 
+                weeklyStatus[day.index] = { 
                     type: type, 
                     minutes: exceptionToday.minutes,
                     badBehavior: badBehavior,
                     behaviorMark: behaviorMark
                 };
             } else {
-                weeklyStatus[i] = { 
+                weeklyStatus[day.index] = { 
                     type: 'ok', 
                     minutes: null,
                     badBehavior: false,
                     behaviorMark: 'א'
                 };
             }
-        }
+        });
+
         return {
             code: student.code,
             first_name: student.first_name,
