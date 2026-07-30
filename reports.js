@@ -24,7 +24,6 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
         for (const item of results) {
             const data = item.data;
             
-            // הסרת ניקוד וטעמים מהתאריך העברי שמוחזר מה-API
             const cleanHebrewDate = (data.hebrew || "").replace(/[\u0591-\u05C7]/g, '');
             hebDates[item.dateStr] = cleanHebrewDate;
             
@@ -70,31 +69,32 @@ export async function getWeeklyData(env, targetDate) {
     const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
     const daysToShow = [];
     
+    // הלולאה רצה על כל 6 הימים תמיד כדי לתמוך בשבועות עתידיים
     for (let i = 0; i <= 5; i++) {
         const currentDay = new Date(start);
         currentDay.setDate(currentDay.getDate() + i);
         const dateStr = currentDay.toISOString().split('T')[0];
         
-        if (dateStr <= today) {
-            let shortHebDate = hebDates[dateStr] || "";
-            if(shortHebDate) {
-                const parts = shortHebDate.split(' ');
-                if(parts.length > 2) {
-                    shortHebDate = parts.slice(0, -1).join(' '); 
-                }
+        let shortHebDate = hebDates[dateStr] || "";
+        if(shortHebDate) {
+            const parts = shortHebDate.split(' ');
+            if(parts.length > 2) {
+                shortHebDate = parts.slice(0, -1).join(' '); 
             }
-
-            const isToday = (dateStr === today);
-
-            daysToShow.push({ 
-                index: i, 
-                name: dayNames[i], 
-                dateStr,
-                hebDate: shortHebDate,
-                isVacation: vacationDates.includes(dateStr),
-                isToday: isToday
-            });
         }
+
+        const isToday = (dateStr === today);
+        const isFuture = (dateStr > today);
+
+        daysToShow.push({ 
+            index: i, 
+            name: dayNames[i], 
+            dateStr,
+            hebDate: shortHebDate,
+            isVacation: vacationDates.includes(dateStr),
+            isToday: isToday,
+            isFuture: isFuture
+        });
     }
 
     const report = students.map(student => {
