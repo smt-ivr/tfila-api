@@ -1,14 +1,15 @@
 import { handleExceptions } from './exceptions.js';
 import { handleReports } from './reports.js';
-import { handleStudents } from './students.js';
+import { handleStudents, handleBulkUpdate } from './students.js';
 import { handleYemot } from './yemot.js';
 import { handleSendEmail } from './email.js';
 import { getCurrentIsraelTime } from './utils.js';
+import { getAdminHTML } from './admin-ui.js';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Pass',
 };
 
 function jsonResponse(data, status = 200) {
@@ -28,10 +29,41 @@ export default {
         const path = url.pathname;
 
         try {
+            // מסלולים פומביים לחלוטין (מערכת ימות המשיח)
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
             
-            // נתיב לשליחת אימייל מהאתר
+            // מסלול הגשת ממשק הניהול הויזואלי
+            if (path === '/' || path === '/tfila' || path === '/tfila/') {
+                if (request.method === 'GET') {
+                    return new Response(getAdminHTML(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+                }
+            }
+
+            // --- מערכת אימות (Authentication Middleware) למסלולי ה-API השמורים ---
+            const passHeader = request.headers.get('X-Admin-Pass');
+            let realPass = '102050'; // סיסמת ברירת מחדל במידה והטבלה טרם הוגדרה
+            
+            try {
+                const dbPassRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'admin_password'").first();
+                if (dbPassRow) realPass = dbPassRow.value;
+            } catch (e) {
+                // מתעלם משגיאות במידה והטבלה טרם קיימת במסד הנתונים
+            }
+
+            // טיפול בבקשת התחברות
+            if (path.endsWith('/login') && request.method === 'POST') {
+                const body = await request.json();
+                if (body.password === realPass) return jsonResponse({ success: true });
+                return jsonResponse({ error: "סיסמה שגויה" }, 401);
+            }
+
+            // חסימת הגישה למסלולים מוגנים ללא סיסמה תקינה בהדר
+            if (passHeader !== realPass) {
+                return jsonResponse({ error: "Unauthorized" }, 401);
+            }
+
+            // --- מסלולים מוגנים (דורשים סיסמה) ---
             if (path.endsWith('/send-email') && request.method === 'POST') {
                 const result = await handleSendEmail(request, env);
                 return jsonResponse(result);
@@ -72,6 +104,11 @@ export default {
                 await env.DB.prepare("DELETE FROM exceptions WHERE student_code = ?").bind(code).run();
                 await env.DB.prepare("DELETE FROM students WHERE code = ?").bind(code).run();
                 return jsonResponse({ message: "התלמיד וכל נתוניו נמחקו לצמיתות" });
+            }
+
+            if (path.endsWith('/bulk-update-students') && request.method === 'POST') {
+                const result = await handleBulkUpdate(request, env);
+                return jsonResponse(result);
             }
 
             return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
