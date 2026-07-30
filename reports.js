@@ -88,12 +88,10 @@ export async function getWeeklyData(env, targetDate) {
             if (exceptionToday) {
                 const type = exceptionToday.type || 'ok';
                 const badBehavior = exceptionToday.bad_behavior === 1;
-                let behaviorMark = '';
+                let behaviorMark = 'א'; // ברירת מחדל שונתה ל-'א'
                 
                 if (badBehavior) {
                     behaviorMark = 'ב';
-                } else if (type === 'ok' || type === 'late') {
-                    behaviorMark = 'א'; 
                 } else if (type === 'absence') {
                     behaviorMark = '';  
                 }
@@ -105,12 +103,12 @@ export async function getWeeklyData(env, targetDate) {
                     behaviorMark: behaviorMark
                 };
             } else {
-                // כאשר אין חריגה - התא יהיה חלק וריק לחלוטין
+                // כאשר אין חריגה - התא יקבל 'א' כברירת מחדל
                 weeklyStatus[day.index] = { 
                     type: 'ok', 
                     minutes: null,
                     badBehavior: false,
-                    behaviorMark: '' 
+                    behaviorMark: 'א' 
                 };
             }
         });
