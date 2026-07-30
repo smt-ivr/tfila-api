@@ -11,19 +11,24 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
             fetches.push(
                 fetch(`https://www.hebcal.com/converter?cfg=json&date=${dateStr}&lg=h&i=on`)
                     .then(r => r.json())
+                    .then(data => ({ dateStr, data }))
             );
         }
         
         const results = await Promise.all(fetches);
         
-        let parasha = "";
         let heYear = "";
+        let parasha = "";
+        const hebDates = {};
 
-        for (const data of results) {
+        for (const item of results) {
+            const data = item.data;
+            hebDates[item.dateStr] = data.hebrew || ""; 
+            
             if (data.heDateParts && !heYear) {
                 heYear = data.heDateParts.y;
             }
-            if (data.events) {
+            if (data.events && !parasha) {
                 const parashaEvent = data.events.find(e => {
                     const clean = e.replace(/\u05BE/g, '-').replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, '');
                     return clean.includes("פרשת");
@@ -31,13 +36,12 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
                 
                 if (parashaEvent) {
                     parasha = parashaEvent.replace(/\u05BE/g, '-').replace(/[\u0591-\u05BD\u05BF-\u05C7\.]/g, ''); 
-                    break;
                 }
             }
         }
-        return { parasha, heYear };
+        return { parasha, heYear, hebDates };
     } catch (e) {
-        return { parasha: "", heYear: "" };
+        return { parasha: "", heYear: "", hebDates: {} };
     }
 }
 
@@ -45,7 +49,7 @@ export async function getWeeklyData(env, targetDate) {
     const { start, end } = getWeekRange(targetDate);
     const today = getCurrentIsraelTime().date;
     
-    const { parasha, heYear } = await getWeeklyHebrewInfo(start);
+    const { parasha, heYear, hebDates } = await getWeeklyHebrewInfo(start);
     
     const { results: students } = await env.DB.prepare(
         "SELECT * FROM students ORDER BY CAST(code AS INTEGER), class_name, first_name"
@@ -69,11 +73,24 @@ export async function getWeeklyData(env, targetDate) {
         const dateStr = currentDay.toISOString().split('T')[0];
         
         if (dateStr <= today) {
+            let shortHebDate = hebDates[dateStr] || "";
+            if(shortHebDate) {
+                const parts = shortHebDate.split(' ');
+                if(parts.length > 2) {
+                    shortHebDate = parts.slice(0, -1).join(' '); 
+                }
+            }
+
+            // זיהוי היום הנוכחי ישירות בשרת
+            const isToday = (dateStr === today);
+
             daysToShow.push({ 
                 index: i, 
                 name: dayNames[i], 
                 dateStr,
-                isVacation: vacationDates.includes(dateStr)
+                hebDate: shortHebDate,
+                isVacation: vacationDates.includes(dateStr),
+                isToday: isToday
             });
         }
     }
@@ -88,7 +105,7 @@ export async function getWeeklyData(env, targetDate) {
             if (exceptionToday) {
                 const type = exceptionToday.type || 'ok';
                 const badBehavior = exceptionToday.bad_behavior === 1;
-                let behaviorMark = 'א'; // ברירת מחדל שונתה ל-'א'
+                let behaviorMark = 'א'; 
                 
                 if (badBehavior) {
                     behaviorMark = 'ב';
@@ -103,7 +120,6 @@ export async function getWeeklyData(env, targetDate) {
                     behaviorMark: behaviorMark
                 };
             } else {
-                // כאשר אין חריגה - התא יקבל 'א' כברירת מחדל
                 weeklyStatus[day.index] = { 
                     type: 'ok', 
                     minutes: null,
