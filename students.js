@@ -1,7 +1,8 @@
 export async function handleStudents(request, env) {
     if (request.method === "GET") {
+        // CAST AS INTEGER ממיר את מחרוזת הקוד למספר, כך ש-10 יבוא אחרי 2 ולא אחרי 1
         const { results } = await env.DB.prepare(
-            "SELECT * FROM students ORDER BY class_name, first_name"
+            "SELECT * FROM students ORDER BY CAST(code AS INTEGER), class_name, first_name"
         ).all();
         
         return {
@@ -21,7 +22,6 @@ export async function handleBulkUpdate(request, env) {
         throw new Error("חסר שם כיתה לעדכון");
     }
 
-    // Cloudflare D1 תומך בהרצת פקודות במקביל (batch)
     const stmts = studentCodes.map(code => 
         env.DB.prepare("UPDATE students SET class_name = ? WHERE code = ?").bind(className, code)
     );
