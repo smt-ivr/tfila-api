@@ -29,30 +29,25 @@ export default {
         const path = url.pathname;
 
         try {
-            // מסלולים פומביים לחלוטין
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
             
-            // מסלול הגשת ממשק הניהול הויזואלי
             if (path === '/' || path === '/tfila' || path === '/tfila/') {
                 if (request.method === 'GET') {
                     return new Response(getAdminHTML(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
                 }
             }
 
-            // --- מערכת אימות ---
             const passHeader = request.headers.get('X-Admin-Pass');
             const passQuery = url.searchParams.get('code');
-            const providedPass = passHeader || passQuery; // תמיכה גם בהדר וגם בפרמטר URL
+            const providedPass = passHeader || passQuery; 
             
             let realPass = null;
             try {
-                // משיכת הסיסמה ממסד הנתונים בלבד - ללא סיסמה בקוד
                 const dbPassRow = await env.DB.prepare("SELECT value FROM settings WHERE key = 'admin_password'").first();
                 if (dbPassRow) realPass = dbPassRow.value;
             } catch (e) {}
 
-            // טיפול בבקשת התחברות מהאתר
             if (path.endsWith('/login') && request.method === 'POST') {
                 if (!realPass) return jsonResponse({ error: "המערכת טרם הוגדרה. אנא הוסף סיסמה במסד הנתונים." }, 500);
                 
@@ -61,12 +56,10 @@ export default {
                 return jsonResponse({ error: "סיסמה שגויה" }, 401);
             }
 
-            // חסימת הגישה אם אין סיסמה תקינה או אם השרת לא הוגדר
             if (!realPass || providedPass !== realPass) {
                 return jsonResponse({ error: "Unauthorized" }, 401);
             }
 
-            // --- מסלולים מוגנים (דורשים סיסמה תקינה) ---
             if (path.endsWith('/send-email') && request.method === 'POST') {
                 const result = await handleSendEmail(request, env);
                 return jsonResponse(result);
@@ -112,6 +105,17 @@ export default {
             if (path.endsWith('/bulk-update-students') && request.method === 'POST') {
                 const result = await handleBulkUpdate(request, env);
                 return jsonResponse(result);
+            }
+
+            // נתיב חדש לטיפול בימי חופש
+            if (path.endsWith('/toggle-vacation') && request.method === 'POST') {
+                const { date, isVacation } = await request.json();
+                if (isVacation) {
+                    await env.DB.prepare("INSERT OR IGNORE INTO vacations (date) VALUES (?)").bind(date).run();
+                } else {
+                    await env.DB.prepare("DELETE FROM vacations WHERE date = ?").bind(date).run();
+                }
+                return jsonResponse({ message: "עודכן בהצלחה" });
             }
 
             return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
