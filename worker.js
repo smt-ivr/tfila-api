@@ -30,8 +30,6 @@ export default {
         const path = url.pathname;
 
         try {
-            // --- מסלולים פתוחים ללא סיסמה ---
-            
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
             
@@ -41,8 +39,6 @@ export default {
                 }
             }
 
-            // --- בדיקת הרשאות (סיסמת מנהל) ---
-            
             const passHeader = request.headers.get('X-Admin-Pass');
             const passQuery = url.searchParams.get('code');
             const providedPass = passHeader || passQuery; 
@@ -53,21 +49,16 @@ export default {
                 if (dbPassRow) realPass = dbPassRow.value;
             } catch (e) {}
 
-            // נתיב התחברות
             if (path.endsWith('/login') && request.method === 'POST') {
-                if (!realPass) return jsonResponse({ error: "המערכת טרם הוגדרה. אנא הוסף סיסמה במסד הנתונים." }, 500);
-                
+                if (!realPass) return jsonResponse({ error: "המערכת טרם הוגדרה. אנא הוסף סיסמה." }, 500);
                 const body = await request.json();
                 if (body.password === realPass) return jsonResponse({ success: true });
                 return jsonResponse({ error: "סיסמה שגויה" }, 401);
             }
 
-            // חסימת גישה לנתיבים הבאים ללא סיסמה תקינה
             if (!realPass || providedPass !== realPass) {
                 return jsonResponse({ error: "Unauthorized" }, 401);
             }
-
-            // --- מסלולים מוגנים (דורשים סיסמה תקינה) ---
 
             if (path.endsWith('/send-email') && request.method === 'POST') {
                 const result = await handleSendEmail(request, env);
@@ -126,7 +117,12 @@ export default {
                 return jsonResponse({ message: "עודכן בהצלחה" });
             }
 
-            // נתיב הגישה החדש למסד הנתונים
+            // נתיב חדש - שליפת כל ימי החופש לטובת הצגה בלוח השנה
+            if (path.endsWith('/vacations') && request.method === 'GET') {
+                const { results } = await env.DB.prepare("SELECT date FROM vacations").all();
+                return jsonResponse(results.map(r => r.date));
+            }
+
             if (path.endsWith('/db-query') && request.method === 'POST') {
                 const result = await handleDatabaseQuery(request, env);
                 const status = result.success ? 200 : 400;
