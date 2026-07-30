@@ -4,7 +4,6 @@ import { getCurrentIsraelTime } from './utils.js';
 export async function handleSendEmail(request, env) {
     const url = new URL(request.url);
     
-    // איסוף כל הפרמטרים שמתחילים במילה email
     const emailsArray = [];
     for (const [key, value] of url.searchParams.entries()) {
         if (key.toLowerCase().startsWith('email') && value.trim() !== '') {
@@ -13,7 +12,6 @@ export async function handleSendEmail(request, env) {
         }
     }
     
-    // סינון כפילויות
     const uniqueEmails = [...new Set(emailsArray)];
     
     if (uniqueEmails.length === 0) {
@@ -21,14 +19,12 @@ export async function handleSendEmail(request, env) {
     }
 
     const current = getCurrentIsraelTime();
-    
-    // לקיחת תאריך ספציפי מהכתובת כדי לאפשר לשלוח מייל משבועות קודמים, אם אין אז היום הנוכחי
     const dateParam = url.searchParams.get('date') || current.date;
     
     const data = await getWeeklyData(env, dateParam);
     const htmlContent = buildEmailHTML(data, dateParam);
 
-    const parashaText = data.parasha ? ` - ${data.parasha}` : '';
+    const parashaText = data.parasha ? ` - פרשת ${data.parasha}` : '';
     const yearText = data.heYear ? ` ${data.heYear}` : '';
     const subjectLine = `דוח נוכחות יומי${parashaText}${yearText}`;
 
@@ -107,7 +103,7 @@ function buildEmailHTML(data, currentDateStr) {
         `;
     });
 
-    const parashaText = data.parasha ? ` - ${data.parasha}` : '';
+    const parashaText = data.parasha ? ` - פרשת ${data.parasha}` : '';
     const yearText = data.heYear ? ` ${data.heYear}` : '';
     const titleLine = `דוח נוכחות יומי${parashaText}${yearText}`;
 
@@ -121,6 +117,8 @@ function buildEmailHTML(data, currentDateStr) {
                 .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; padding: 20px; border: 1px solid #E5E7EB; box-shadow: 0 4px 6px rgba(0,0,0,0.05); direction: rtl; }
                 h2 { color: #1F2937; margin-bottom: 20px; text-align: center; font-size: 26px; font-weight: bold; }
                 table { border-collapse: collapse; width: 100%; border: 1px solid #D1D5DB; direction: rtl; margin: 0 auto; }
+                .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
+                .footer a { color: #2563EB; text-decoration: none; font-weight: bold; font-size: 15px; background-color: #EFF6FF; padding: 10px 20px; border-radius: 6px; display: inline-block; }
             </style>
         </head>
         <body dir="rtl" style="direction: rtl; text-align: center;">
@@ -142,6 +140,9 @@ function buildEmailHTML(data, currentDateStr) {
                         ${rows}
                     </tbody>
                 </table>
+                <div class="footer">
+                    <a href="https://smti.uk/tfila">לכניסה למערכת הניהול לחץ כאן</a>
+                </div>
             </div>
         </body>
         </html>
