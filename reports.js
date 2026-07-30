@@ -1,6 +1,7 @@
 import { getCurrentIsraelTime, getWeekRange } from './utils.js';
 
-async function getWeeklyHebrewInfo(weekStartDate) {
+// הוספנו export כדי שימות יוכל לייבא את הפונקציה
+export async function getWeeklyHebrewInfo(weekStartDate) {
     try {
         const d = new Date(weekStartDate);
         d.setDate(d.getDate() + 6); 
@@ -14,7 +15,6 @@ async function getWeeklyHebrewInfo(weekStartDate) {
 
         if (data.events) {
             const parashaEvent = data.events.find(e => {
-                // החלפת מקף עברי ברווח ומחיקת שאר הניקוד
                 const clean = e.replace(/\u05BE/g, ' ').replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, '');
                 return clean.includes("פרשת");
             });
