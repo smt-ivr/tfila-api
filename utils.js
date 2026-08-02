@@ -36,3 +36,13 @@ export function getWeekRange(dateString) {
         end: formatDate(friday)
     };
 }
+
+// פונקציה חדשה: משיכת הגדרות מהמסד
+export async function getSetting(env, key, defaultValue = null) {
+    try {
+        const row = await env.DB.prepare("SELECT value FROM settings WHERE key = ?").bind(key).first();
+        return row ? row.value : defaultValue;
+    } catch (e) {
+        return defaultValue;
+    }
+}
