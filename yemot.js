@@ -99,11 +99,12 @@ export async function handleYemot(request, env) {
         const vacMsg = isVacation ? "מעודכן במערכת שאין היום לימודים, " : "";
 
         const dateText = await getHebrewDateString(current.date);
+        // תפריט מעודכן עם אפשרויות 5 ו-6
         const welcomeMessage = dateText 
-            ? `t-${dateText}, ${vacMsg}לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0` 
-            : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לשליחת המייל היומי הקישו 0`;
+            ? `t-${dateText}, ${vacMsg}לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתוני היום הקישו 6, לשליחת המייל היומי הקישו 0` 
+            : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתוני היום הקישו 6, לשליחת המייל היומי הקישו 0`;
             
-        return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,12340,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,1234560,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '4' && !customDateInput) {
@@ -118,10 +119,56 @@ export async function handleYemot(request, env) {
         const vacMsg = isVacation ? "מעודכן במערכת שאין היום לימודים, " : "";
 
         const dateText = await getHebrewDateString(effectiveDate);
+        // תפריט מעודכן עבור תאריך מותאם אישית
         const prompt = dateText 
-            ? `t-${dateText}, ${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3` 
-            : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3`;
-        return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,123,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            ? `t-${dateText}, ${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתונים הקישו 6` 
+            : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתונים הקישו 6`;
+        return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,12356,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    }
+
+    // --- הוספת מקש 5: הגדרה או ביטול חופשה ---
+    if (actualType === '5') {
+        const vacCheck = await env.DB.prepare("SELECT date FROM vacations WHERE date = ?").bind(effectiveDate).first();
+        if (vacCheck) {
+            await env.DB.prepare("DELETE FROM vacations WHERE date = ?").bind(effectiveDate).run();
+            return new Response(`id_list_message=t-בוטל יום חופשה בהצלחה לתאריך המבוקש&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        } else {
+            await env.DB.prepare("INSERT OR IGNORE INTO vacations (date) VALUES (?)").bind(effectiveDate).run();
+            return new Response(`id_list_message=t-הוגדר יום חופשה בהצלחה לתאריך המבוקש&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        }
+    }
+
+    // --- הוספת מקש 6: שמיעת נתונים מעודכנים ---
+    if (actualType === '6') {
+        const exceptionsQuery = await env.DB.prepare(`
+            SELECT e.type, e.minutes, e.bad_behavior, s.first_name, s.last_name 
+            FROM exceptions e
+            JOIN students s ON e.student_code = s.code
+            WHERE e.date = ?
+        `).bind(effectiveDate).all();
+        
+        if (!exceptionsQuery.results || exceptionsQuery.results.length === 0) {
+            return new Response(`id_list_message=t-אין נתונים מעודכנים לתאריך זה&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        }
+        
+        let absences = [];
+        let lates = [];
+        let badBehaviors = [];
+        
+        for (const row of exceptionsQuery.results) {
+            const name = `${row.first_name} ${row.last_name}`;
+            if (row.type === 'absence') absences.push(name);
+            if (row.type === 'late') lates.push(`${name} ${row.minutes} דקות`);
+            if (row.bad_behavior === 1) badBehaviors.push(name);
+        }
+        
+        let msgParts = [];
+        if (absences.length > 0) msgParts.push(`חיסרו: ${absences.join(', ')}.`);
+        if (lates.length > 0) msgParts.push(`איחרו: ${lates.join(', ')}.`);
+        if (badBehaviors.length > 0) msgParts.push(`התנהגות לא טובה: ${badBehaviors.join(', ')}.`);
+        
+        const finalMsg = msgParts.join(' ');
+        return new Response(`id_list_message=t-${finalMsg}&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     let prefix = '';
