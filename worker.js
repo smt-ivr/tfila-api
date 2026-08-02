@@ -60,7 +60,6 @@ export default {
                 return jsonResponse({ error: "Unauthorized" }, 401);
             }
 
-            // נתיב משיכת תאריך התחלת המערכת (לשימוש בממשק או בדוחות עתידיים)
             if (path.endsWith('/system-start-date') && request.method === 'GET') {
                 const startDate = await getSetting(env, 'system_start_date', '2000-01-01');
                 return jsonResponse({ system_start_date: startDate });
@@ -78,7 +77,7 @@ export default {
 
             if (path.endsWith('/reports') && request.method === 'GET') {
                 const result = await handleReports(request, env);
-                return jsonResponse(result);
+                return jsonResponse(result); // מכאן זה פשוט יחזור כסטטוס 200 רגיל
             }
             
             if (path.endsWith('/students') && request.method === 'GET') {
