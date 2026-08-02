@@ -48,24 +48,8 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
 }
 
 export async function getWeeklyData(env, targetDate) {
-    // בדיקת תאריך תחילת מערכת
     const systemStartDate = await getSetting(env, 'system_start_date', '2000-01-01');
-    if (targetDate < systemStartDate) {
-        // מחזירים אובייקט תקין עם סטטוס 200 במקום לזרוק שגיאה
-        return {
-            success: false,
-            isBeforeStart: true,
-            message: "המערכת טרם התחילה לפעול בתאריך זה",
-            weekStart: targetDate,
-            weekEnd: targetDate,
-            parasha: "",
-            heYear: "",
-            isCurrentWeek: false,
-            isFutureWeek: false,
-            daysToShow: [],
-            report: []
-        };
-    }
+    const isBeforeStart = targetDate < systemStartDate;
 
     const { start, end } = getWeekRange(targetDate);
     
@@ -79,19 +63,7 @@ export async function getWeeklyData(env, targetDate) {
     
     const { parasha, heYear, hebDates } = await getWeeklyHebrewInfo(start);
     
-    const { results: students } = await env.DB.prepare(
-        "SELECT * FROM students ORDER BY CAST(code AS INTEGER), class_name, first_name"
-    ).all();
-    
-    const { results: exceptions } = await env.DB.prepare(
-        "SELECT * FROM exceptions WHERE date >= ? AND date <= ?"
-    ).bind(start, end).all();
-
-    const { results: vacations } = await env.DB.prepare(
-        "SELECT date FROM vacations WHERE date >= ? AND date <= ?"
-    ).bind(start, end).all();
-    const vacationDates = vacations.map(v => v.date);
-
+    // יצירת מערך הימים כדי שהתצוגה (כותרות) תוכל להשתמש בתאריכים העבריים
     const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
     const daysToShow = [];
     
@@ -111,16 +83,53 @@ export async function getWeeklyData(env, targetDate) {
         const isToday = (dateStr === today);
         const isFuture = (dateStr > today);
 
+        // אם המערכת טרם התחילה, נניח שאין חופשות עדיין
         daysToShow.push({ 
             index: i, 
             name: dayNames[i], 
             dateStr,
             hebDate: shortHebDate,
-            isVacation: vacationDates.includes(dateStr),
+            isVacation: false,
             isToday: isToday,
             isFuture: isFuture
         });
     }
+
+    // אם התאריך לפני תחילת המערכת, נחזיר את כל הנתונים הכלליים עם דוח ריק והודעה
+    if (isBeforeStart) {
+        return {
+            success: false,
+            isBeforeStart: true,
+            message: "המערכת טרם התחילה לפעול בתאריך זה",
+            weekStart: start,
+            weekEnd: end,
+            parasha,
+            heYear,
+            isCurrentWeek,
+            isFutureWeek,
+            daysToShow,
+            report: []
+        };
+    }
+
+    // המשך שליפת נתונים מהמסד רק אם המערכת כבר התחילה לעבוד בתאריך זה
+    const { results: students } = await env.DB.prepare(
+        "SELECT * FROM students ORDER BY CAST(code AS INTEGER), class_name, first_name"
+    ).all();
+    
+    const { results: exceptions } = await env.DB.prepare(
+        "SELECT * FROM exceptions WHERE date >= ? AND date <= ?"
+    ).bind(start, end).all();
+
+    const { results: vacations } = await env.DB.prepare(
+        "SELECT date FROM vacations WHERE date >= ? AND date <= ?"
+    ).bind(start, end).all();
+    const vacationDates = vacations.map(v => v.date);
+
+    // עדכון ימי החופשה במערך הימים
+    daysToShow.forEach(day => {
+        day.isVacation = vacationDates.includes(day.dateStr);
+    });
 
     const report = students.map(student => {
         const studentExceptions = exceptions.filter(e => e.student_code === student.code);
