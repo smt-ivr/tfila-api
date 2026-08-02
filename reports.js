@@ -51,9 +51,20 @@ export async function getWeeklyData(env, targetDate) {
     // בדיקת תאריך תחילת מערכת
     const systemStartDate = await getSetting(env, 'system_start_date', '2000-01-01');
     if (targetDate < systemStartDate) {
-        const error = new Error("המערכת טרם התחילה לפעול בתאריך זה");
-        error.status = 400; // הגדרת סטטוס נורמלי לשגיאה צפויה
-        throw error;
+        // מחזירים אובייקט תקין עם סטטוס 200 במקום לזרוק שגיאה
+        return {
+            success: false,
+            isBeforeStart: true,
+            message: "המערכת טרם התחילה לפעול בתאריך זה",
+            weekStart: targetDate,
+            weekEnd: targetDate,
+            parasha: "",
+            heYear: "",
+            isCurrentWeek: false,
+            isFutureWeek: false,
+            daysToShow: [],
+            report: []
+        };
     }
 
     const { start, end } = getWeekRange(targetDate);
