@@ -11,6 +11,7 @@ async function getHebrewDateString(dateString) {
         const dayName = days[new Date(dateString).getDay()];
         
         let resText = parasha ? `יום ${dayName} ${parasha}` : `יום ${dayName}`;
+        // מסירים נקודות מהתאריך במידה ויש
         return resText.replace(/\./g, '').replace(/-/g, ' '); 
     } catch (error) {
         return ""; 
@@ -93,13 +94,11 @@ export async function handleYemot(request, env) {
     const actualType = (reportType === '4') ? finalReportType : reportType;
 
     if (!reportType) {
-        // בדיקה האם היום הנוכחי הוא חופש
         const vacCheck = await env.DB.prepare("SELECT date FROM vacations WHERE date = ?").bind(current.date).first();
         const isVacation = !!vacCheck;
         const vacMsg = isVacation ? "מעודכן במערכת שאין היום לימודים, " : "";
 
         const dateText = await getHebrewDateString(current.date);
-        // תפריט מעודכן עם אפשרויות 5 ו-6
         const welcomeMessage = dateText 
             ? `t-${dateText}, ${vacMsg}לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתוני היום הקישו 6, לשליחת המייל היומי הקישו 0` 
             : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתוני היום הקישו 6, לשליחת המייל היומי הקישו 0`;
@@ -108,25 +107,22 @@ export async function handleYemot(request, env) {
     }
 
     if (reportType === '4' && !customDateInput) {
-        const datePrompt = "t-הקש את התאריך המבוקש, לאתמול הקישו 1 וסולמית, לשלשום הקישו 2 וסולמית, לתאריך ספציפי הקישו 4 ספרות של יום וחודש וסולמית.";
+        const datePrompt = "t-הקש את התאריך המבוקש, לאתמול הקישו 1 וסולמית, לשלשום הקישו 2 וסולמית, לתאריך ספציפי הקישו 4 ספרות של יום וחודש וסולמית";
         return new Response(`read=${datePrompt}=custom_date_input,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     if (reportType === '4' && customDateInput && !finalReportType) {
-        // בדיקה האם התאריך הספציפי שהוזן הוא חופש
         const vacCheck = await env.DB.prepare("SELECT date FROM vacations WHERE date = ?").bind(effectiveDate).first();
         const isVacation = !!vacCheck;
         const vacMsg = isVacation ? "מעודכן במערכת שאין היום לימודים, " : "";
 
         const dateText = await getHebrewDateString(effectiveDate);
-        // תפריט מעודכן עבור תאריך מותאם אישית
         const prompt = dateText 
             ? `t-${dateText}, ${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתונים הקישו 6` 
             : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתונים הקישו 6`;
         return new Response(`read=${prompt}=final_report_type,,1,,,NO,,,,12356,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    // --- הוספת מקש 5: הגדרה או ביטול חופשה ---
     if (actualType === '5') {
         const vacCheck = await env.DB.prepare("SELECT date FROM vacations WHERE date = ?").bind(effectiveDate).first();
         if (vacCheck) {
@@ -138,7 +134,6 @@ export async function handleYemot(request, env) {
         }
     }
 
-    // --- הוספת מקש 6: שמיעת נתונים מעודכנים ---
     if (actualType === '6') {
         const exceptionsQuery = await env.DB.prepare(`
             SELECT e.type, e.minutes, e.bad_behavior, s.first_name, s.last_name 
@@ -152,22 +147,39 @@ export async function handleYemot(request, env) {
         }
         
         let absences = [];
-        let lates = [];
-        let badBehaviors = [];
+        let latesOnly = [];
+        let badOnly = [];
+        let latesAndBad = [];
+        let absenceAndBad = [];
         
         for (const row of exceptionsQuery.results) {
             const name = `${row.first_name} ${row.last_name}`;
-            if (row.type === 'absence') absences.push(name);
-            if (row.type === 'late') lates.push(`${name} ${row.minutes} דקות`);
-            if (row.bad_behavior === 1) badBehaviors.push(name);
+            const isLate = row.type === 'late';
+            const isAbsence = row.type === 'absence';
+            const isBad = row.bad_behavior === 1;
+
+            if (isAbsence && isBad) {
+                absenceAndBad.push(name);
+            } else if (isAbsence) {
+                absences.push(name);
+            } else if (isLate && isBad) {
+                latesAndBad.push(`${name} ${row.minutes} דקות`);
+            } else if (isLate) {
+                latesOnly.push(`${name} ${row.minutes} דקות`);
+            } else if (isBad) {
+                badOnly.push(name);
+            }
         }
         
         let msgParts = [];
-        if (absences.length > 0) msgParts.push(`חיסרו: ${absences.join(', ')}.`);
-        if (lates.length > 0) msgParts.push(`איחרו: ${lates.join(', ')}.`);
-        if (badBehaviors.length > 0) msgParts.push(`התנהגות לא טובה: ${badBehaviors.join(', ')}.`);
+        if (absences.length > 0) msgParts.push(`חיסרו: ${absences.join(', ')}`);
+        if (absenceAndBad.length > 0) msgParts.push(`חיסרו וגם התנהגות לא טובה: ${absenceAndBad.join(', ')}`);
+        if (latesOnly.length > 0) msgParts.push(`איחרו: ${latesOnly.join(', ')}`);
+        if (latesAndBad.length > 0) msgParts.push(`איחרו ועם התנהגות לא טובה: ${latesAndBad.join(', ')}`);
+        if (badOnly.length > 0) msgParts.push(`התנהגות לא טובה: ${badOnly.join(', ')}`);
         
-        const finalMsg = msgParts.join(' ');
+        // חיבור כל החלקים בפסיקים, ללא נקודות
+        const finalMsg = msgParts.join(', ');
         return new Response(`id_list_message=t-${finalMsg}&`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
@@ -186,9 +198,9 @@ export async function handleYemot(request, env) {
 
     if (maxIndex === 0) {
         let prompt = "";
-        if (actualType === '1') prompt = "t-הקש קוד תלמיד, כוכבית, ומספר דקות איחור.";
-        if (actualType === '2') prompt = "t-הקש קוד תלמיד לדיווח חיסור.";
-        if (actualType === '3') prompt = "t-הקש קוד תלמיד לדיווח התנהגות לא טובה.";
+        if (actualType === '1') prompt = "t-הקש קוד תלמיד, כוכבית, ומספר דקות איחור";
+        if (actualType === '2') prompt = "t-הקש קוד תלמיד לדיווח חיסור";
+        if (actualType === '3') prompt = "t-הקש קוד תלמיד לדיווח התנהגות לא טובה";
 
         return new Response(`read=${prompt}=${prefix}1,,,,,NO,,,,,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
