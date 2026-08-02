@@ -32,6 +32,22 @@ export default {
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
 
+            // משיכת כתובת ה-IP של הלקוח משרתי Cloudflare
+            const clientIP = request.headers.get('cf-connecting-ip');
+            let isIPWhitelisted = false;
+
+            if (clientIP) {
+                try {
+                    // בדיקה מול טבלת הכתובות המורשות. אם הטבלה לא קיימת, ה-catch יתפוס זאת.
+                    const ipCheck = await env.DB.prepare("SELECT ip FROM allowed_ips WHERE ip = ?").bind(clientIP).first();
+                    if (ipCheck) {
+                        isIPWhitelisted = true;
+                    }
+                } catch (e) {
+                    // מתעלמים משגיאות (כמו טבלה חסרה) וממשיכים לבדיקת הסיסמה
+                }
+            }
+
             const passHeader = request.headers.get('X-Admin-Pass');
             const passQuery = url.searchParams.get('code');
             const providedPass = passHeader || passQuery; 
@@ -43,14 +59,18 @@ export default {
             } catch (e) {}
 
             if (path.endsWith('/login') && request.method === 'POST') {
-                if (!realPass) return jsonResponse({ error: "המערכת טרם הוגדרה. אנא הוסף סיסמה." }, 500);
+                if (!realPass) return jsonResponse({ error: "המערכת טרם הוגדרה. אנא הוסף סיסמה במסד הנתונים." }, 500);
                 const body = await request.json();
                 if (body.password === realPass) return jsonResponse({ success: true });
-                return jsonResponse({ error: "סיסמה שגויה" }, 401);
+                return jsonResponse({ error: "שגיאה: הסיסמה שהוזנה שגויה" }, 401);
             }
 
-            if (!realPass || providedPass !== realPass) {
-                return jsonResponse({ error: "Unauthorized" }, 401);
+            // אימות הרשאה - אם ה-IP לא מורשה והסיסמה שגויה/חסרה
+            if (!isIPWhitelisted && (!realPass || providedPass !== realPass)) {
+                if (!providedPass) {
+                    return jsonResponse({ error: "גישה נדחתה: לא צורף קוד הרשאה או סיסמה" }, 401);
+                }
+                return jsonResponse({ error: "גישה נדחתה: קוד ההרשאה שגוי או פג תוקף" }, 401);
             }
 
             if (path.endsWith('/system-start-date') && request.method === 'GET') {
@@ -81,7 +101,7 @@ export default {
             if (path.endsWith('/add-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
                 const existingStudent = await env.DB.prepare("SELECT code FROM students WHERE code = ?").bind(code).first();
-                if (existingStudent) return jsonResponse({ error: "קוד תלמיד כבר קיים." }, 400);
+                if (existingStudent) return jsonResponse({ error: "שגיאה: קוד תלמיד זה כבר קיים במערכת." }, 400);
                 
                 await env.DB.prepare("INSERT INTO students (code, first_name, last_name, class_name) VALUES (?, ?, ?, ?)").bind(code, first_name, last_name, class_name).run();
                 return jsonResponse({ message: "התלמיד נוסף בהצלחה" });
@@ -90,7 +110,7 @@ export default {
             if (path.endsWith('/update-student') && request.method === 'POST') {
                 const { code, first_name, last_name, class_name } = await request.json();
                 await env.DB.prepare("UPDATE students SET first_name = ?, last_name = ?, class_name = ? WHERE code = ?").bind(first_name, last_name, class_name, code).run();
-                return jsonResponse({ message: "פרטי התלמיד עודכנו" });
+                return jsonResponse({ message: "פרטי התלמיד עודכנו בהצלחה" });
             }
 
             if (path.endsWith('/delete-student') && request.method === 'POST') {
@@ -112,7 +132,7 @@ export default {
                 } else {
                     await env.DB.prepare("DELETE FROM vacations WHERE date = ?").bind(date).run();
                 }
-                return jsonResponse({ message: "עודכן בהצלחה" });
+                return jsonResponse({ message: "יומן החופשות עודכן בהצלחה" });
             }
 
             if (path.endsWith('/vacations') && request.method === 'GET') {
@@ -126,10 +146,12 @@ export default {
                 return jsonResponse(result, status);
             }
 
-            return jsonResponse({ error: "הנתיב לא קיים במערכת", requested_path: path }, 404);
+            return jsonResponse({ error: "הנתיב המבוקש לא קיים במערכת", requested_path: path }, 404);
 
         } catch (error) {
-            return jsonResponse({ error: "שגיאת שרת פנימית: " + error.message }, 500);
+            const statusCode = error.status || 500;
+            const prefix = statusCode === 500 ? "שגיאת שרת פנימית: " : "";
+            return jsonResponse({ error: prefix + error.message }, statusCode);
         }
     }
 };
