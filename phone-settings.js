@@ -17,6 +17,40 @@ async function callYemotAPI(endpoint, params) {
     return data;
 }
 
+// ---------------------------------------------------------
+// פונקציות לניהול נתוני ניתוב ושלוחה
+// ---------------------------------------------------------
+
+// שאיבת נתוני הלקוח (כולל מספרי טלפון - DIDs)
+async function fetchCustomerData(token) {
+    const data = await callYemotAPI('GetCustomerData', { token });
+    if (data.responseStatus !== 'OK') {
+        throw new Error(data.message || 'שגיאה בשליפת נתוני לקוח משרת ימות המשיח');
+    }
+    return data;
+}
+
+// שאיבת הגדרות שלוחה ספציפית (ext.ini)
+async function fetchExtensionSettings(token, extensionPath) {
+    // מוודאים שהנתיב מתחיל בלוכסן
+    const cleanPath = extensionPath.startsWith('/') ? extensionPath : '/' + extensionPath;
+    const fullPath = `ivr2:${cleanPath}/ext.ini`;
+    
+    try {
+        const data = await callYemotAPI('GetTextFile', { token, what: fullPath });
+        if (data.responseStatus === 'OK' && data.contents) {
+            return data.contents;
+        }
+        return "";
+    } catch (e) {
+        return ""; // מחזירים מחרוזת ריקה במקרה של שגיאה או קובץ חסר
+    }
+}
+
+// ---------------------------------------------------------
+// פונקציות לניהול רשימה לבנה (WhiteList)
+// ---------------------------------------------------------
+
 // שאיבת הרשימה הלבנה
 async function fetchWhiteList(token, path) {
     try {
@@ -32,7 +66,7 @@ async function fetchWhiteList(token, path) {
     }
 }
 
-// שמירת הרשימה הלבנה (הדריסה מתבצעת על כל הקובץ כנדרש לאחר השאיבה)
+// שמירת הרשימה הלבנה (דריסה מלאה)
 async function saveWhiteList(token, path, numbersArray) {
     const contents = numbersArray.join('\n');
     const data = await callYemotAPI('UploadTextFile', { token, what: path, contents });
@@ -41,6 +75,7 @@ async function saveWhiteList(token, path, numbersArray) {
         throw new Error(data.message || 'שגיאה בשמירת הקובץ בשרת ימות המשיח');
     }
 }
+
 
 // פונקציה ראשית לניתוב בקשות ההגדרות
 export async function handlePhoneSettings(request, env) {
@@ -56,13 +91,47 @@ export async function handlePhoneSettings(request, env) {
         throw new Error("טוקן התחברות לימות המשיח חסר בהגדרות המערכת. אנא הוסף yemot_token לטבלת settings.");
     }
 
-    // שליפת רשימת המספרים
+    // --- נתיב חדש: שליפת מידע על המספר, הניתוב והגדרות השלוחה ---
+    if (request.method === 'GET' && path.endsWith('/phone-settings/routing-info')) {
+        const customerData = await fetchCustomerData(token);
+        
+        let primaryDid = customerData.mainDid;
+        let targetExtension = null;
+        let extensionSettings = null;
+
+        // חיפוש בתוך מספרי הטלפון המשניים כדי למצוא לאיזו שלוחה המערכת מנותבת
+        if (customerData.secondary_dids && customerData.secondary_dids.length > 0) {
+            const routedDid = customerData.secondary_dids.find(d => d.usage && d.usage.startsWith('goto:'));
+            
+            if (routedDid) {
+                primaryDid = routedDid.did;
+                targetExtension = routedDid.usage.replace('goto:', ''); // משאיר רק את הנתיב, למשל /888
+            }
+        }
+
+        // במידה ונמצאה שלוחה, נשלוף את קובץ ה-ext.ini שלה
+        if (targetExtension) {
+            extensionSettings = await fetchExtensionSettings(token, targetExtension);
+        }
+
+        return { 
+            success: true, 
+            data: {
+                did: primaryDid,
+                extension: targetExtension,
+                extSettings: extensionSettings,
+                systemName: customerData.name
+            } 
+        };
+    }
+
+    // שליפת רשימת המספרים של הרשימה הלבנה
     if (request.method === 'GET' && path.endsWith('/phone-settings/whitelist')) {
         const numbers = await fetchWhiteList(token, listPath);
         return { success: true, data: numbers };
     }
     
-    // פעולות עריכה (הוספה, עדכון, מחיקה)
+    // פעולות עריכה (הוספה, עדכון, מחיקה) לרשימה הלבנה
     if (request.method === 'POST') {
         const body = await request.json();
         
