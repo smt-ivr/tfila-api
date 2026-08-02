@@ -30,6 +30,25 @@ async function fetchCustomerData(token) {
     return data;
 }
 
+// פונקציית עזר לאיתור השלוחה הפעילה אליה מנותב המספר
+async function getActiveExtensionInfo(token) {
+    const customerData = await fetchCustomerData(token);
+    
+    let primaryDid = customerData.mainDid;
+    let targetExtension = null;
+
+    if (customerData.secondary_dids && customerData.secondary_dids.length > 0) {
+        const routedDid = customerData.secondary_dids.find(d => d.usage && d.usage.startsWith('goto:'));
+        
+        if (routedDid) {
+            primaryDid = routedDid.did;
+            targetExtension = routedDid.usage.replace('goto:', '');
+        }
+    }
+    
+    return { primaryDid, targetExtension, systemName: customerData.name };
+}
+
 // שאיבת הגדרות שלוחה ספציפית (ext.ini)
 async function fetchExtensionSettings(token, extensionPath) {
     // מוודאים שהנתיב מתחיל בלוכסן
@@ -91,51 +110,48 @@ export async function handlePhoneSettings(request, env) {
         throw new Error("טוקן התחברות לימות המשיח חסר בהגדרות המערכת. אנא הוסף yemot_token לטבלת settings.");
     }
 
-    // --- נתיב חדש: שליפת מידע על המספר, הניתוב והגדרות השלוחה ---
+    // --- 1. קריאה נפרדת: שליפת מידע על המספר והניתוב בלבד ---
     if (request.method === 'GET' && path.endsWith('/phone-settings/routing-info')) {
-        const customerData = await fetchCustomerData(token);
+        const info = await getActiveExtensionInfo(token);
         
-        let primaryDid = customerData.mainDid;
-        let targetExtension = null;
-        let extensionSettings = null;
-
-        // חיפוש בתוך מספרי הטלפון המשניים כדי למצוא לאיזו שלוחה המערכת מנותבת
-        if (customerData.secondary_dids && customerData.secondary_dids.length > 0) {
-            const routedDid = customerData.secondary_dids.find(d => d.usage && d.usage.startsWith('goto:'));
-            
-            if (routedDid) {
-                primaryDid = routedDid.did;
-                targetExtension = routedDid.usage.replace('goto:', ''); // משאיר רק את הנתיב, למשל /888
-            }
-        }
-
-        // במידה ונמצאה שלוחה, נשלוף את קובץ ה-ext.ini שלה
-        if (targetExtension) {
-            extensionSettings = await fetchExtensionSettings(token, targetExtension);
-        }
-
         return { 
             success: true, 
             data: {
-                did: primaryDid,
-                extension: targetExtension,
-                extSettings: extensionSettings,
-                systemName: customerData.name
+                did: info.primaryDid,
+                extension: info.targetExtension,
+                systemName: info.systemName
             } 
         };
     }
 
-    // שליפת רשימת המספרים של הרשימה הלבנה
+    // --- 2. קריאה נפרדת: שליפת התוכן של השלוחה (ללא צורך בהעברת נתיב) ---
+    if (request.method === 'GET' && path.endsWith('/phone-settings/ext-settings')) {
+        const info = await getActiveExtensionInfo(token);
+        
+        if (!info.targetExtension) {
+            throw new Error("לא נמצאה שלוחה פעילה המוגדרת בנתב");
+        }
+        
+        const extensionSettings = await fetchExtensionSettings(token, info.targetExtension);
+        
+        return { 
+            success: true, 
+            data: {
+                extension: info.targetExtension,
+                extSettings: extensionSettings
+            } 
+        };
+    }
+
+    // --- קריאות קיימות: ניהול רשימה לבנה ---
     if (request.method === 'GET' && path.endsWith('/phone-settings/whitelist')) {
         const numbers = await fetchWhiteList(token, listPath);
         return { success: true, data: numbers };
     }
     
-    // פעולות עריכה (הוספה, עדכון, מחיקה) לרשימה הלבנה
     if (request.method === 'POST') {
         const body = await request.json();
         
-        // הוספת מספר
         if (path.endsWith('/phone-settings/whitelist/add')) {
             const { number } = body;
             if (!number) throw new Error("מספר טלפון חסר");
@@ -150,7 +166,6 @@ export async function handlePhoneSettings(request, env) {
             return { success: true, message: "המספר נוסף בהצלחה", data: numbers };
         }
         
-        // עדכון/עריכת מספר קיים
         if (path.endsWith('/phone-settings/whitelist/update')) {
             const { oldNumber, newNumber } = body;
             if (!oldNumber || !newNumber) throw new Error("חסרים נתוני מספרי טלפון");
@@ -160,14 +175,13 @@ export async function handlePhoneSettings(request, env) {
             if (index === -1) throw new Error("המספר הישן לא נמצא ברשימה");
             
             numbers[index] = newNumber;
-            // הסרת כפילויות למקרה שהמספר החדש כבר קיים במערך
+            // הסרת כפילויות
             numbers = [...new Set(numbers)];
             
             await saveWhiteList(token, listPath, numbers);
             return { success: true, message: "המספר עודכן בהצלחה", data: numbers };
         }
         
-        // מחיקת מספר
         if (path.endsWith('/phone-settings/whitelist/delete')) {
             const { number } = body;
             if (!number) throw new Error("מספר טלפון חסר");
