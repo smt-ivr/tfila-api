@@ -1,4 +1,4 @@
-import { getCurrentIsraelTime, getWeekRange } from './utils.js';
+import { getCurrentIsraelTime, getWeekRange, getSetting } from './utils.js';
 
 export async function getWeeklyHebrewInfo(weekStartDate) {
     try {
@@ -48,6 +48,12 @@ export async function getWeeklyHebrewInfo(weekStartDate) {
 }
 
 export async function getWeeklyData(env, targetDate) {
+    // בדיקת תאריך תחילת מערכת
+    const systemStartDate = await getSetting(env, 'system_start_date', '2000-01-01');
+    if (targetDate < systemStartDate) {
+        throw new Error("המערכת טרם התחילה לפעול בתאריך זה");
+    }
+
     const { start, end } = getWeekRange(targetDate);
     
     // משיכת הזמן הנוכחי והשבוע הנוכחי האמיתי
