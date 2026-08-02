@@ -63,6 +63,20 @@ export async function getWeeklyData(env, targetDate) {
     
     const { parasha, heYear, hebDates } = await getWeeklyHebrewInfo(start);
     
+    // אם התאריך לפני תחילת המערכת, נחזיר את המבנה המדויק שביקשת
+    if (isBeforeStart) {
+        return {
+            isBeforeStart: true,
+            message: "המערכת טרם התחילה לפעול בתאריך זה",
+            weekStart: start,
+            weekEnd: end,
+            parasha,
+            heYear,
+            isCurrentWeek,
+            isFutureWeek
+        };
+    }
+
     // יצירת מערך הימים כדי שהתצוגה (כותרות) תוכל להשתמש בתאריכים העבריים
     const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
     const daysToShow = [];
@@ -83,7 +97,6 @@ export async function getWeeklyData(env, targetDate) {
         const isToday = (dateStr === today);
         const isFuture = (dateStr > today);
 
-        // אם המערכת טרם התחילה, נניח שאין חופשות עדיין
         daysToShow.push({ 
             index: i, 
             name: dayNames[i], 
@@ -93,23 +106,6 @@ export async function getWeeklyData(env, targetDate) {
             isToday: isToday,
             isFuture: isFuture
         });
-    }
-
-    // אם התאריך לפני תחילת המערכת, נחזיר את כל הנתונים הכלליים עם דוח ריק והודעה
-    if (isBeforeStart) {
-        return {
-            success: false,
-            isBeforeStart: true,
-            message: "המערכת טרם התחילה לפעול בתאריך זה",
-            weekStart: start,
-            weekEnd: end,
-            parasha,
-            heYear,
-            isCurrentWeek,
-            isFutureWeek,
-            daysToShow,
-            report: []
-        };
     }
 
     // המשך שליפת נתונים מהמסד רק אם המערכת כבר התחילה לעבוד בתאריך זה
