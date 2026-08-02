@@ -1,4 +1,4 @@
-import { getCurrentIsraelTime, isSaturday, getWeekRange } from './utils.js';
+import { getCurrentIsraelTime, isSaturday, getWeekRange, getSetting } from './utils.js';
 import { handleSendEmail } from './email.js';
 import { getWeeklyHebrewInfo } from './reports.js';
 
@@ -81,6 +81,11 @@ export async function handleYemot(request, env) {
         else return new Response("id_list_message=t-תאריך שגוי&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
     
+    const systemStartDate = await getSetting(env, 'system_start_date', '2000-01-01');
+    if (effectiveDate < systemStartDate) {
+        return new Response("id_list_message=t-המערכת טרם התחילה לפעול בתאריך זה&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    }
+
     if (isSaturday(effectiveDate)) {
         return new Response("id_list_message=t-אין לימודים בשבת&", { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
