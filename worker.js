@@ -3,6 +3,7 @@ import { handleReports } from './reports.js';
 import { handleStudents, handleBulkUpdate } from './students.js';
 import { handleYemot } from './yemot.js';
 import { handleSendEmail } from './email.js';
+import { handlePhoneSettings } from './phone-settings.js';
 import { getCurrentIsraelTime, getSetting } from './utils.js';
 import { handleDatabaseQuery } from './db-api.js';
 
@@ -153,6 +154,12 @@ export default {
                 const result = await handleDatabaseQuery(request, env);
                 const status = result.success ? 200 : 400;
                 return jsonResponse(result, status);
+            }
+
+            // הניתוב החדש לניהול הגדרות הטלפון מול ימות המשיח (מפנה לקובץ phone-settings.js)
+            if (path.includes('/phone-settings/')) {
+                const result = await handlePhoneSettings(request, env);
+                return jsonResponse(result);
             }
 
             return jsonResponse({ error: "הנתיב המבוקש לא קיים במערכת", requested_path: path }, 404);
