@@ -4,7 +4,6 @@ import { handleStudents, handleBulkUpdate } from './students.js';
 import { handleYemot } from './yemot.js';
 import { handleSendEmail } from './email.js';
 import { getCurrentIsraelTime, getSetting } from './utils.js';
-import { getAdminHTML } from './admin-ui.js';
 import { handleDatabaseQuery } from './db-api.js';
 
 const corsHeaders = {
@@ -32,12 +31,6 @@ export default {
         try {
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
-            
-            if (path === '/' || path === '/tfila' || path === '/tfila/') {
-                if (request.method === 'GET') {
-                    return new Response(getAdminHTML(), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-                }
-            }
 
             const passHeader = request.headers.get('X-Admin-Pass');
             const passQuery = url.searchParams.get('code');
@@ -77,7 +70,7 @@ export default {
 
             if (path.endsWith('/reports') && request.method === 'GET') {
                 const result = await handleReports(request, env);
-                return jsonResponse(result); // מכאן זה פשוט יחזור כסטטוס 200 רגיל
+                return jsonResponse(result);
             }
             
             if (path.endsWith('/students') && request.method === 'GET') {
