@@ -32,20 +32,29 @@ export default {
             if (path.endsWith('/yemot')) return await handleYemot(request, env);
             if (path.endsWith('/system-time') && request.method === 'GET') return jsonResponse({ message: "זמן שרת", ...getCurrentIsraelTime() });
 
-            // משיכת כתובת ה-IP של הלקוח משרתי Cloudflare
+            // נתיב חדש: בדיקה האם ה-IP של הלקוח ברשימה הלבנה
+            if (path.endsWith('/check-ip') && request.method === 'GET') {
+                const clientIP = request.headers.get('cf-connecting-ip');
+                let isWhitelisted = false;
+                if (clientIP) {
+                    try {
+                        const ipCheck = await env.DB.prepare("SELECT ip FROM allowed_ips WHERE ip = ?").bind(clientIP).first();
+                        if (ipCheck) isWhitelisted = true;
+                    } catch (e) {
+                        // אם הטבלה עדיין לא קיימת במסד, מתעלמים וממשיכים רגיל
+                    }
+                }
+                return jsonResponse({ whitelisted: isWhitelisted });
+            }
+
             const clientIP = request.headers.get('cf-connecting-ip');
             let isIPWhitelisted = false;
 
             if (clientIP) {
                 try {
-                    // בדיקה מול טבלת הכתובות המורשות. אם הטבלה לא קיימת, ה-catch יתפוס זאת.
                     const ipCheck = await env.DB.prepare("SELECT ip FROM allowed_ips WHERE ip = ?").bind(clientIP).first();
-                    if (ipCheck) {
-                        isIPWhitelisted = true;
-                    }
-                } catch (e) {
-                    // מתעלמים משגיאות (כמו טבלה חסרה) וממשיכים לבדיקת הסיסמה
-                }
+                    if (ipCheck) isIPWhitelisted = true;
+                } catch (e) {}
             }
 
             const passHeader = request.headers.get('X-Admin-Pass');
