@@ -3,7 +3,7 @@ import { handleReports } from './reports.js';
 import { handleStudents, handleBulkUpdate } from './students.js';
 import { handleYemot } from './yemot.js';
 import { handleSendEmail } from './email.js';
-import { getCurrentIsraelTime } from './utils.js';
+import { getCurrentIsraelTime, getSetting } from './utils.js';
 import { getAdminHTML } from './admin-ui.js';
 import { handleDatabaseQuery } from './db-api.js';
 
@@ -58,6 +58,12 @@ export default {
 
             if (!realPass || providedPass !== realPass) {
                 return jsonResponse({ error: "Unauthorized" }, 401);
+            }
+
+            // נתיב משיכת תאריך התחלת המערכת (לשימוש בממשק או בדוחות עתידיים)
+            if (path.endsWith('/system-start-date') && request.method === 'GET') {
+                const startDate = await getSetting(env, 'system_start_date', '2000-01-01');
+                return jsonResponse({ system_start_date: startDate });
             }
 
             if (path.endsWith('/send-email') && request.method === 'POST') {
@@ -117,7 +123,6 @@ export default {
                 return jsonResponse({ message: "עודכן בהצלחה" });
             }
 
-            // נתיב חדש - שליפת כל ימי החופש לטובת הצגה בלוח השנה
             if (path.endsWith('/vacations') && request.method === 'GET') {
                 const { results } = await env.DB.prepare("SELECT date FROM vacations").all();
                 return jsonResponse(results.map(r => r.date));
