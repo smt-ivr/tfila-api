@@ -100,7 +100,7 @@ export async function handleYemot(request, env) {
 
         const dateText = await getHebrewDateString(current.date);
         const welcomeMessage = dateText 
-            ? `t-${dateText}, ${vacMsg}לאיחור הקש 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתוני היום הקישו 6, לשליחת המייל היומי הקישו 0` 
+            ? `t-${dateText}, ${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתוני היום הקישו 6, לשליחת המייל היומי הקישו 0` 
             : `t-${vacMsg}לאיחור הקישו 1, לחיסור הקישו 2, להתנהגות הקישו 3, לתאריך אחר הקישו 4, לעדכון או ביטול חופשה הקישו 5, לשמיעת נתוני היום הקישו 6, לשליחת המייל היומי הקישו 0`;
             
         return new Response(`read=${welcomeMessage}=report_type,,1,,,NO,,,,1234560,,,,,no`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
