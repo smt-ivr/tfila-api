@@ -6,6 +6,7 @@ import { handleSendEmail } from './email.js';
 import { handlePhoneSettings } from './phone-settings.js';
 import { getCurrentIsraelTime, getSetting } from './utils.js';
 import { handleDatabaseQuery } from './db-api.js';
+import { handleStudentReport } from './student-report.js';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -103,6 +104,11 @@ export default {
                 return jsonResponse(result);
             }
             
+            if (path.endsWith('/student-report') && request.method === 'GET') {
+                const result = await handleStudentReport(request, env);
+                return jsonResponse(result);
+            }
+
             if (path.endsWith('/students') && request.method === 'GET') {
                 const result = await handleStudents(request, env);
                 return jsonResponse(result);
